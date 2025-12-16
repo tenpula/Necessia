@@ -10,6 +10,130 @@ import {
 
 const OPENALEX_BASE_URL = 'https://api.openalex.org';
 
+// レート制限管理クラス
+class RateLimiter {
+  private requestsPerSecond: number = 10; // 1秒あたりの最大リクエスト数
+  private requestsPerDay: number = 100000; // 1日あたりの最大リクエスト数
+  private minRequestInterval: number = 100; // 最小リクエスト間隔（ミリ秒）
+  
+  private requestTimestamps: number[] = []; // 最近のリクエストタイムスタンプ
+  private dailyRequestCount: number = 0;
+  private lastRequestTime: number = 0;
+  private dailyResetTime: number = this.getNextMidnight();
+
+  private getNextMidnight(): number {
+    const now = Date.now();
+    const tomorrow = new Date(now);
+    tomorrow.setHours(24, 0, 0, 0);
+    return tomorrow.getTime();
+  }
+
+  private resetDailyCountIfNeeded(): void {
+    const now = Date.now();
+    if (now >= this.dailyResetTime) {
+      this.dailyRequestCount = 0;
+      this.dailyResetTime = this.getNextMidnight();
+    }
+  }
+
+  private async waitForRateLimit(): Promise<void> {
+    const now = Date.now();
+    
+    // 日次リセットチェック
+    this.resetDailyCountIfNeeded();
+    
+    // 日次制限チェック
+    if (this.dailyRequestCount >= this.requestsPerDay) {
+      const waitTime = this.dailyResetTime - now;
+      if (waitTime > 0) {
+        throw new Error(`Daily rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000 / 60)} minutes.`);
+      }
+    }
+    
+    // 1秒あたりの制限チェック
+    const oneSecondAgo = now - 1000;
+    this.requestTimestamps = this.requestTimestamps.filter(ts => ts > oneSecondAgo);
+    
+    if (this.requestTimestamps.length >= this.requestsPerSecond) {
+      const oldestRequest = this.requestTimestamps[0];
+      const waitTime = oldestRequest + 1000 - now;
+      if (waitTime > 0) {
+        await this.sleep(waitTime);
+      }
+    }
+    
+    // 最小リクエスト間隔のチェック
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      const waitTime = this.minRequestInterval - timeSinceLastRequest;
+      await this.sleep(waitTime);
+    }
+    
+    // リクエストを記録
+    this.requestTimestamps.push(Date.now());
+    this.lastRequestTime = Date.now();
+    this.dailyRequestCount++;
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async makeRequest<T>(url: string, options?: RequestInit): Promise<Response> {
+    await this.waitForRateLimit();
+    
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
+      try {
+        const response = await fetch(url, options);
+        
+        // 429エラー（レート制限超過）の場合、指数バックオフでリトライ
+        if (response.status === 429) {
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            throw new Error('Rate limit exceeded. Please try again later.');
+          }
+          
+          // Retry-Afterヘッダーがあればそれを使用、なければ指数バックオフ
+          const retryAfter = response.headers.get('Retry-After');
+          const waitTime = retryAfter 
+            ? parseInt(retryAfter) * 1000 
+            : Math.min(1000 * Math.pow(2, retryCount), 10000); // 最大10秒
+          
+          console.warn(`Rate limit hit. Retrying after ${waitTime}ms (attempt ${retryCount}/${maxRetries})`);
+          await this.sleep(waitTime);
+          continue;
+        }
+        
+        return response;
+      } catch (error) {
+        // ネットワークエラーの場合もリトライ
+        if (retryCount < maxRetries - 1) {
+          retryCount++;
+          const waitTime = Math.min(1000 * Math.pow(2, retryCount), 10000);
+          console.warn(`Request failed. Retrying after ${waitTime}ms (attempt ${retryCount}/${maxRetries})`);
+          await this.sleep(waitTime);
+          continue;
+        }
+        throw error;
+      }
+    }
+    
+    throw new Error('Request failed after maximum retries');
+  }
+}
+
+// シングルトンインスタンス
+const rateLimiter = new RateLimiter();
+
+// 環境変数からメールアドレスを取得（なければデフォルト値を使用）
+const getMailtoParam = (): string => {
+  const email = process.env.OPENALEX_EMAIL || 'your-email@example.com';
+  return `mailto=${encodeURIComponent(email)}`;
+};
+
 // arXiv URLからarXiv IDを抽出
 export function extractArxivId(input: string): string | null {
   // arXiv URL patterns:
@@ -124,8 +248,8 @@ function reconstructAbstract(invertedIndex?: Record<string, number[]>): string |
 // arXiv IDで論文を検索
 export async function searchByArxivId(arxivId: string): Promise<Paper | null> {
   try {
-    const url = `${OPENALEX_BASE_URL}/works?filter=ids.arxiv:${arxivId}&mailto=your-email@example.com`;
-    const response = await fetch(url);
+    const url = `${OPENALEX_BASE_URL}/works?filter=ids.arxiv:${arxivId}&${getMailtoParam()}`;
+    const response = await rateLimiter.makeRequest(url);
     
     if (!response.ok) {
       throw new Error(`OpenAlex API error: ${response.status}`);
@@ -147,8 +271,8 @@ export async function searchByArxivId(arxivId: string): Promise<Paper | null> {
 // DOIで論文を検索
 export async function searchByDoi(doi: string): Promise<Paper | null> {
   try {
-    const url = `${OPENALEX_BASE_URL}/works/https://doi.org/${doi}?mailto=your-email@example.com`;
-    const response = await fetch(url);
+    const url = `${OPENALEX_BASE_URL}/works/https://doi.org/${doi}?${getMailtoParam()}`;
+    const response = await rateLimiter.makeRequest(url);
     
     if (!response.ok) {
       if (response.status === 404) {
@@ -169,8 +293,8 @@ export async function searchByDoi(doi: string): Promise<Paper | null> {
 export async function searchByTitle(title: string): Promise<Paper[]> {
   try {
     const encodedTitle = encodeURIComponent(title);
-    const url = `${OPENALEX_BASE_URL}/works?search=${encodedTitle}&per_page=10&mailto=your-email@example.com`;
-    const response = await fetch(url);
+    const url = `${OPENALEX_BASE_URL}/works?search=${encodedTitle}&per_page=10&${getMailtoParam()}`;
+    const response = await rateLimiter.makeRequest(url);
     
     if (!response.ok) {
       throw new Error(`OpenAlex API error: ${response.status}`);
@@ -187,8 +311,8 @@ export async function searchByTitle(title: string): Promise<Paper[]> {
 // OpenAlex IDから論文を取得
 export async function getWorkById(openAlexId: string): Promise<Paper | null> {
   try {
-    const url = `${OPENALEX_BASE_URL}/works/${openAlexId}?mailto=your-email@example.com`;
-    const response = await fetch(url);
+    const url = `${OPENALEX_BASE_URL}/works/${openAlexId}?${getMailtoParam()}`;
+    const response = await rateLimiter.makeRequest(url);
     
     if (!response.ok) {
       if (response.status === 404) {
@@ -209,8 +333,8 @@ export async function getWorkById(openAlexId: string): Promise<Paper | null> {
 export async function getReferences(openAlexId: string): Promise<Paper[]> {
   try {
     // まず対象論文の詳細を取得
-    const url = `${OPENALEX_BASE_URL}/works/${openAlexId}?mailto=your-email@example.com`;
-    const response = await fetch(url);
+    const url = `${OPENALEX_BASE_URL}/works/${openAlexId}?${getMailtoParam()}`;
+    const response = await rateLimiter.makeRequest(url);
     
     if (!response.ok) {
       throw new Error(`OpenAlex API error: ${response.status}`);
@@ -232,8 +356,8 @@ export async function getReferences(openAlexId: string): Promise<Paper[]> {
       const batch = referencedWorkIds.slice(i, i + batchSize);
       const idsFilter = batch.map(id => id.replace('https://openalex.org/', '')).join('|');
       
-      const batchUrl = `${OPENALEX_BASE_URL}/works?filter=ids.openalex:${idsFilter}&per_page=${batchSize}&mailto=your-email@example.com`;
-      const batchResponse = await fetch(batchUrl);
+      const batchUrl = `${OPENALEX_BASE_URL}/works?filter=ids.openalex:${idsFilter}&per_page=${batchSize}&${getMailtoParam()}`;
+      const batchResponse = await rateLimiter.makeRequest(batchUrl);
       
       if (batchResponse.ok) {
         const batchData: OpenAlexSearchResponse = await batchResponse.json();
@@ -252,8 +376,8 @@ export async function getReferences(openAlexId: string): Promise<Paper[]> {
 export async function getCitations(openAlexId: string, limit: number = 50): Promise<Paper[]> {
   try {
     const cleanId = openAlexId.replace('https://openalex.org/', '');
-    const url = `${OPENALEX_BASE_URL}/works?filter=cites:${cleanId}&per_page=${limit}&sort=cited_by_count:desc&mailto=your-email@example.com`;
-    const response = await fetch(url);
+    const url = `${OPENALEX_BASE_URL}/works?filter=cites:${cleanId}&per_page=${limit}&sort=cited_by_count:desc&${getMailtoParam()}`;
+    const response = await rateLimiter.makeRequest(url);
     
     if (!response.ok) {
       throw new Error(`OpenAlex API error: ${response.status}`);

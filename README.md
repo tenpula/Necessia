@@ -16,6 +16,7 @@
 - **Styling:** Tailwind CSS 4
 - **Graph Visualization:** React Flow (@xyflow/react)
 - **Data Source:** OpenAlex API
+- **Rate Limiting:** 自動レート制限管理（1秒あたり10リクエスト、1日10万リクエスト）
 
 ## 📦 セットアップ
 
@@ -23,12 +24,25 @@
 # 依存関係のインストール
 npm install
 
+# 環境変数の設定（オプション）
+# プロジェクトルートに .env.local ファイルを作成し、以下を設定：
+# OPENALEX_EMAIL=your-email@example.com
+# メールアドレスを設定すると、OpenAlexの「polite pool」に参加でき、より安定したレスポンスが得られます
+
 # 開発サーバーの起動
 npm run dev
 
 # ビルド
 npm run build
 ```
+
+### 環境変数
+
+`.env.local`ファイルを作成して、以下の環境変数を設定できます：
+
+- `OPENALEX_EMAIL`: OpenAlex APIのメールアドレス（推奨）
+  - 設定すると「polite pool」に参加し、より安定したレスポンスが得られます
+  - 未設定の場合はデフォルト値が使用されます
 
 ## 🔍 使い方
 
