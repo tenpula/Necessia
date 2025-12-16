@@ -46,7 +46,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
+    <div className="h-screen bg-slate-950 flex flex-col overflow-hidden">
       {/* ヘッダー */}
       <header className="relative z-10 px-6 py-4 border-b border-slate-800/50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -174,7 +174,7 @@ export default function Home() {
           </div>
         ) : (
           // グラフビュー
-          <div className="flex-1 relative" style={{ minHeight: '600px' }}>
+          <div className="flex-1 relative overflow-hidden" style={{ height: '100%' }}>
             {/* 戻るボタン */}
             <div className="absolute top-4 left-4 z-20">
               <button

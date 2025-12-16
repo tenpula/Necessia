@@ -184,7 +184,7 @@ export default function CitationGraph({ network }: CitationGraphProps) {
   }, []);
 
   return (
-    <div className="w-full h-full relative" style={{ minHeight: '600px' }}>
+    <div className="w-full h-full relative" style={{ width: '100%', height: '100%' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
