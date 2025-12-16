@@ -25,7 +25,8 @@ export default function Home() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to build network');
+        const errorMessage = data.error || `Failed to build network (Status: ${response.status})`;
+        throw new Error(errorMessage);
       }
 
       const data: CitationNetwork = await response.json();

@@ -142,19 +142,29 @@ export function extractArxivId(input: string): string | null {
   // https://arxiv.org/pdf/2301.00234.pdf
   // arXiv:2301.00234
   // 2301.00234
+  // 古い形式: math.GT/0309136 (2007年以前)
   
   const patterns = [
+    // 新しい形式（2007年以降）: YYYY.NNNNN
     /arxiv\.org\/abs\/(\d{4}\.\d{4,5}(?:v\d+)?)/i,
-    /arxiv\.org\/pdf\/(\d{4}\.\d{4,5}(?:v\d+)?)/i,
+    /arxiv\.org\/pdf\/(\d{4}\.\d{4,5}(?:v\d+)?)\.pdf/i,
     /arXiv:(\d{4}\.\d{4,5}(?:v\d+)?)/i,
     /^(\d{4}\.\d{4,5}(?:v\d+)?)$/,
+    // 古い形式（2007年以前）: category/YYMM.number
+    /arxiv\.org\/abs\/([a-z-]+\/\d{7})/i,
+    /arXiv:([a-z-]+\/\d{7})/i,
+    /^([a-z-]+\/\d{7})$/i,
   ];
 
   for (const pattern of patterns) {
     const match = input.match(pattern);
     if (match) {
-      // バージョン番号を削除
-      return match[1].replace(/v\d+$/, '');
+      let arxivId = match[1];
+      // バージョン番号を削除（新しい形式のみ）
+      if (arxivId.match(/^\d{4}\./)) {
+        arxivId = arxivId.replace(/v\d+$/, '');
+      }
+      return arxivId;
     }
   }
 
@@ -248,20 +258,59 @@ function reconstructAbstract(invertedIndex?: Record<string, number[]>): string |
 // arXiv IDで論文を検索
 export async function searchByArxivId(arxivId: string): Promise<Paper | null> {
   try {
-    const url = `${OPENALEX_BASE_URL}/works?filter=ids.arxiv:${arxivId}&${getMailtoParam()}`;
-    const response = await rateLimiter.makeRequest(url);
+    // OpenAlex APIでは、arXiv IDは複数の形式で試す必要がある
+    // 形式1: ids.arxiv:1706.03762
+    // 形式2: ids.arxiv:arXiv:1706.03762
+    // 形式3: 直接URLで検索
     
-    if (!response.ok) {
-      throw new Error(`OpenAlex API error: ${response.status}`);
+    const formats = [
+      `ids.arxiv:${arxivId}`,  // 標準形式
+      `ids.arxiv:arXiv:${arxivId}`,  // arXiv:プレフィックス付き
+      `https://arxiv.org/abs/${arxivId}`,  // URL形式
+    ];
+    
+    for (const format of formats) {
+      try {
+        let url: string;
+        if (format.startsWith('http')) {
+          // URL形式の場合は直接取得
+          url = `${OPENALEX_BASE_URL}/works/${format}?${getMailtoParam()}`;
+        } else {
+          // フィルター形式
+          url = `${OPENALEX_BASE_URL}/works?filter=${format}&${getMailtoParam()}`;
+        }
+        
+        const response = await rateLimiter.makeRequest(url);
+        
+        if (!response.ok) {
+          // 404の場合は次の形式を試す
+          if (response.status === 404) {
+            continue;
+          }
+          throw new Error(`OpenAlex API error: ${response.status}`);
+        }
+        
+        let data: OpenAlexWork | OpenAlexSearchResponse;
+        if (format.startsWith('http')) {
+          // URL形式の場合は単一オブジェクト
+          data = await response.json() as OpenAlexWork;
+          return convertToPaper(data);
+        } else {
+          // フィルター形式の場合は配列
+          data = await response.json() as OpenAlexSearchResponse;
+          if (data.results && data.results.length > 0) {
+            return convertToPaper(data.results[0]);
+          }
+        }
+      } catch (formatError) {
+        // この形式が失敗した場合は次の形式を試す
+        console.warn(`Failed to search with format ${format}:`, formatError);
+        continue;
+      }
     }
     
-    const data: OpenAlexSearchResponse = await response.json();
-    
-    if (data.results.length === 0) {
-      return null;
-    }
-    
-    return convertToPaper(data.results[0]);
+    // すべての形式が失敗した場合
+    return null;
   } catch (error) {
     console.error('Error searching by arXiv ID:', error);
     throw error;
