@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -12,6 +12,7 @@ import {
   Edge,
   MarkerType,
   Panel,
+  ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -69,35 +70,39 @@ function calculateLayout(network: CitationNetwork): { nodes: Node[]; edges: Edge
   
   // 引用している論文を下に配置（円弧状）
   const refCount = uniqueReferenced.length;
-  uniqueReferenced.forEach((paper, index) => {
-    const angle = (Math.PI / (refCount + 1)) * (index + 1);
-    const radius = Math.max(300, refCount * 40);
-    const x = Math.cos(angle - Math.PI / 2) * radius;
-    const y = verticalGap + Math.sin(angle - Math.PI / 2) * radius * 0.3;
-    
-    nodes.push({
-      id: paper.id,
-      type: 'paper',
-      position: { x, y },
-      data: { paper, isSeed: false },
+  if (refCount > 0) {
+    uniqueReferenced.forEach((paper, index) => {
+      const angle = (Math.PI / (refCount + 1)) * (index + 1);
+      const radius = Math.max(300, refCount * 40);
+      const x = Math.cos(angle - Math.PI / 2) * radius;
+      const y = verticalGap + Math.sin(angle - Math.PI / 2) * radius * 0.3;
+      
+      nodes.push({
+        id: paper.id,
+        type: 'paper',
+        position: { x, y },
+        data: { paper, isSeed: false },
+      });
     });
-  });
+  }
   
   // 被引用論文を上に配置（円弧状）
   const citeCount = uniqueCiting.length;
-  uniqueCiting.forEach((paper, index) => {
-    const angle = (Math.PI / (citeCount + 1)) * (index + 1);
-    const radius = Math.max(300, citeCount * 40);
-    const x = Math.cos(angle - Math.PI / 2) * radius;
-    const y = -verticalGap - Math.sin(angle - Math.PI / 2) * radius * 0.3;
-    
-    nodes.push({
-      id: paper.id,
-      type: 'paper',
-      position: { x, y },
-      data: { paper, isSeed: false },
+  if (citeCount > 0) {
+    uniqueCiting.forEach((paper, index) => {
+      const angle = (Math.PI / (citeCount + 1)) * (index + 1);
+      const radius = Math.max(300, citeCount * 40);
+      const x = Math.cos(angle - Math.PI / 2) * radius;
+      const y = -verticalGap - Math.sin(angle - Math.PI / 2) * radius * 0.3;
+      
+      nodes.push({
+        id: paper.id,
+        type: 'paper',
+        position: { x, y },
+        data: { paper, isSeed: false },
+      });
     });
-  });
+  }
   
   // エッジを作成
   const edges: Edge[] = citations.map((citation) => ({
@@ -122,13 +127,52 @@ function calculateLayout(network: CitationNetwork): { nodes: Node[]; edges: Edge
 
 export default function CitationGraph({ network }: CitationGraphProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => calculateLayout(network),
+    () => {
+      console.log('Calculating layout for network:', {
+        papersCount: network.papers.length,
+        citationsCount: network.citations.length,
+        seedPaper: network.seedPaper.title,
+      });
+      const layout = calculateLayout(network);
+      console.log('Layout calculated:', {
+        nodesCount: layout.nodes.length,
+        edgesCount: layout.edges.length,
+      });
+      return layout;
+    },
     [network]
   );
   
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
+  const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
+  
+  // ノードやエッジが空の場合の警告
+  useEffect(() => {
+    if (nodes.length === 0) {
+      console.warn('No nodes to display');
+    }
+    if (edges.length === 0) {
+      console.warn('No edges to display');
+    }
+  }, [nodes.length, edges.length]);
+  
+  // レイアウトが変更されたときにfitViewを実行
+  useEffect(() => {
+    if (reactFlowInstance.current && nodes.length > 0) {
+      setTimeout(() => {
+        reactFlowInstance.current?.fitView({ padding: 0.2, duration: 400 });
+      }, 100);
+    }
+  }, [nodes.length, edges.length]);
+  
+  const onInit = useCallback((instance: ReactFlowInstance) => {
+    reactFlowInstance.current = instance;
+    setTimeout(() => {
+      instance.fitView({ padding: 0.2, duration: 400 });
+    }, 100);
+  }, []);
   
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     const nodeData = node.data as { paper: Paper; isSeed: boolean };
@@ -140,7 +184,7 @@ export default function CitationGraph({ network }: CitationGraphProps) {
   }, []);
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative" style={{ minHeight: '600px' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -148,12 +192,12 @@ export default function CitationGraph({ network }: CitationGraphProps) {
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
+        onInit={onInit}
         nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
         minZoom={0.1}
         maxZoom={2}
         className="bg-slate-950"
+        style={{ width: '100%', height: '100%' }}
       >
         <Background color="#334155" gap={30} size={1} />
         <Controls className="!bg-slate-800 !border-slate-700 !rounded-xl overflow-hidden [&>button]:!bg-slate-800 [&>button]:!border-slate-700 [&>button]:!fill-slate-300 [&>button:hover]:!bg-slate-700" />

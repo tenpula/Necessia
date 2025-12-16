@@ -30,6 +30,11 @@ export default function Home() {
       }
 
       const data: CitationNetwork = await response.json();
+      console.log('Network data received:', {
+        papersCount: data.papers.length,
+        citationsCount: data.citations.length,
+        seedPaper: data.seedPaper.title,
+      });
       setProgress('');
       setNetwork(data);
     } catch (err) {
@@ -169,7 +174,7 @@ export default function Home() {
           </div>
         ) : (
           // グラフビュー
-          <div className="flex-1 relative">
+          <div className="flex-1 relative" style={{ minHeight: '600px' }}>
             {/* 戻るボタン */}
             <div className="absolute top-4 left-4 z-20">
               <button
