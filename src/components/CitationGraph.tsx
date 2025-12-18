@@ -159,8 +159,30 @@ export default function CitationGraph({ network, onAnalysisComplete }: CitationG
     targetPaper: Paper;
   } | null>(null);
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
-  const analysisStarted = useRef(false);
+  const analysisStarted = useRef<string | null>(null); // ネットワークIDを保存
+  const analysisTimer = useRef<NodeJS.Timeout | null>(null); // タイマーを保存
   const onAnalysisCompleteRef = useRef(onAnalysisComplete);
+
+  // networkプロップが変更されたときにcurrentNetworkを更新し、解析フラグをリセット
+  useEffect(() => {
+    const networkId = network.seedPaper.id;
+    if (networkId !== currentNetwork.seedPaper.id) {
+      console.log('Network prop changed, resetting analysis state');
+      // 既存のタイマーをクリーンアップ
+      if (analysisTimer.current) {
+        clearTimeout(analysisTimer.current);
+        analysisTimer.current = null;
+      }
+      setCurrentNetwork(network);
+      analysisStarted.current = null; // リセット
+      setAnalysisProgress({
+        total: 0,
+        analyzed: 0,
+        cached: 0,
+        status: 'idle',
+      });
+    }
+  }, [network.seedPaper.id, currentNetwork.seedPaper.id]);
 
   // ネットワーク変更時にノードとエッジを更新
   useEffect(() => {
@@ -169,29 +191,58 @@ export default function CitationGraph({ network, onAnalysisComplete }: CitationG
     setEdges(newEdges);
   }, [currentNetwork, setNodes, setEdges]);
 
-  // 引用文脈の解析を実行（初回マウント時のみ）
+  // 引用文脈の解析を実行（networkプロップが変更されたとき）
   useEffect(() => {
-    if (analysisStarted.current) return;
-    analysisStarted.current = true;
+    const networkId = network.seedPaper.id;
+    const citationsCount = network.citations.length;
+    
+    // 引用がない場合はスキップ
+    if (citationsCount === 0) {
+      console.log('No citations to analyze, skipping');
+      return;
+    }
+
+    console.log('useEffect triggered for network:', networkId, 'with', citationsCount, 'citations');
 
     const analyzeContexts = async () => {
+      // 既に解析済みのネットワークの場合はスキップ（タイマー発火時にチェック）
+      if (analysisStarted.current === networkId) {
+        console.log('Analysis already completed for this network:', networkId);
+        return;
+      }
+      
+      // 解析開始フラグを設定（タイマー発火時に設定）
+      analysisStarted.current = networkId;
+      console.log('analyzeContexts function called for network:', networkId);
+      
       // APIステータスを確認
       try {
         const statusResponse = await fetch('/api/papers/status');
         const status = await statusResponse.json();
         
+        console.log('API status check:', status);
+        
         if (!status.features.llmAnalysis) {
           console.log('LLM analysis not configured, skipping context analysis');
+          analysisStarted.current = null; // リセット
           return;
         }
       } catch (error) {
         console.warn('Could not check API status:', error);
+        analysisStarted.current = null; // リセット
         return;
       }
 
-      const { citations, papers, seedPaper } = currentNetwork;
+      // networkプロップから直接取得（currentNetworkではなく）
+      const { citations, papers, seedPaper } = network;
       
-      if (citations.length === 0) return;
+      if (citations.length === 0) {
+        console.log('No citations to analyze');
+        analysisStarted.current = null; // リセット
+        return;
+      }
+      
+      console.log('Starting analysis for', citations.length, 'citations');
 
       setAnalysisProgress({
         total: citations.length,
@@ -213,17 +264,33 @@ export default function CitationGraph({ network, onAnalysisComplete }: CitationG
       });
 
       try {
+        console.log('Sending analyze request to API...');
+        
+        // タイムアウト設定（2分）
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log('Request timeout - aborting');
+          controller.abort();
+        }, 120000);
+        
         const response = await fetch('/api/papers/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ citations: citationsToAnalyze }),
+          signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
+        console.log('Response received, status:', response.status);
 
         if (!response.ok) {
-          throw new Error('Analysis request failed');
+          const errorText = await response.text();
+          console.error('API error response:', errorText);
+          throw new Error(`Analysis request failed: ${response.status}`);
         }
 
         const result = await response.json();
+        console.log('Analysis result:', result.stats);
         
         // 結果を反映
         const updatedCitations = citations.map((citation) => {
@@ -265,16 +332,35 @@ export default function CitationGraph({ network, onAnalysisComplete }: CitationG
           ...prev,
           status: 'error',
         }));
+        analysisStarted.current = null; // エラー時はリセットして再試行可能にする
       }
     };
 
-    // 少し遅延させてから解析開始
-    const timer = setTimeout(analyzeContexts, 500);
-    return () => clearTimeout(timer);
-    // 初回マウント時のみ実行するため、依存配列は空
-    // currentNetworkの変更は別のuseEffectで処理
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // 少し遅延させてから解析開始（Reactのレンダリングサイクルを待つ）
+    console.log('Setting up analysis timer for network:', networkId, '(current analysisStarted:', analysisStarted.current, ')');
+    
+    // 既存のタイマーがあればクリーンアップ
+    if (analysisTimer.current) {
+      console.log('Clearing existing timer before setting new one');
+      clearTimeout(analysisTimer.current);
+    }
+    
+    analysisTimer.current = setTimeout(() => {
+      console.log('Analysis timer fired for network:', networkId);
+      analyzeContexts();
+      analysisTimer.current = null; // 実行後はクリア
+    }, 500); // React Strict Modeのクリーンアップを待つため少し長めに
+    
+    return () => {
+      // React Strict Modeではクリーンアップ後に再実行されるため、
+      // タイマーのクリーンアップのみ行い、フラグはリセットしない
+      console.log('useEffect cleanup for network:', networkId, '(timer exists:', !!analysisTimer.current, ')');
+      if (analysisTimer.current) {
+        clearTimeout(analysisTimer.current);
+        analysisTimer.current = null;
+      }
+    };
+  }, [network.seedPaper.id]); // network.seedPaper.idのみを監視（citations.lengthは含めない）
 
   const onInit = useCallback((instance: ReactFlowInstance) => {
     reactFlowInstance.current = instance;

@@ -26,10 +26,23 @@ export default function Home() {
 
   // システムステータスを取得
   useEffect(() => {
-    fetch('/api/papers/status')
-      .then((res) => res.json())
-      .then((data) => setSystemStatus(data))
-      .catch((err) => console.warn('Could not fetch system status:', err));
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch('/api/papers/status');
+        if (!res.ok) {
+          console.error('Failed to fetch system status:', res.status, res.statusText);
+          return;
+        }
+        const data = await res.json();
+        console.log('System status received:', data);
+        console.log('Phase:', data.phase);
+        console.log('LLM configured:', data.features.llmAnalysis);
+        setSystemStatus(data);
+      } catch (err) {
+        console.error('Could not fetch system status:', err);
+      }
+    };
+    fetchStatus();
   }, []);
 
   const handleSearch = async (query: string) => {
@@ -72,6 +85,12 @@ export default function Home() {
   };
 
   const currentPhase = systemStatus?.phase || 1;
+
+  // デバッグ用: フェーズとステータスの変更を監視
+  useEffect(() => {
+    console.log('Current phase:', currentPhase);
+    console.log('System status:', systemStatus);
+  }, [currentPhase, systemStatus]);
 
   return (
     <div className="h-screen bg-slate-950 flex flex-col overflow-hidden">

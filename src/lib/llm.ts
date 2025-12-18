@@ -33,6 +33,39 @@ export function getLLMModelName(): string {
   return 'gpt-4o-mini';
 }
 
+// 利用可能なGeminiモデルを一覧表示（デバッグ用）
+export async function listAvailableGeminiModels(): Promise<string[]> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+    
+    if (!response.ok) {
+      console.error('[LLM] Failed to list models:', response.status, await response.text());
+      return [];
+    }
+    
+    const data = await response.json();
+    const models = data.models || [];
+    const modelNames = models
+      .filter((m: { supportedGenerationMethods?: string[] }) => 
+        m.supportedGenerationMethods?.includes('generateContent')
+      )
+      .map((m: { name: string }) => m.name.replace('models/', ''));
+    
+    console.log('[LLM] Available Gemini models:', modelNames);
+    return modelNames;
+  } catch (error) {
+    console.error('[LLM] Error listing models:', error);
+    return [];
+  }
+}
+
 // プロンプトテンプレート
 const CLASSIFICATION_PROMPT = `You are a citation context classifier for computer science research papers.
 
@@ -66,7 +99,7 @@ Respond in JSON format ONLY:
   "explanation": "brief explanation"
 }`;
 
-// Gemini APIで分類
+// Gemini APIで分類（REST API直接呼び出し）
 async function classifyWithGemini(
   sourcePaper: Paper,
   targetPaper: Paper
@@ -76,43 +109,91 @@ async function classifyWithGemini(
     throw new Error('GEMINI_API_KEY is not configured');
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ 
-    model: 'gemini-1.5-flash',
-    generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 256,
-    },
-  });
-
   const prompt = CLASSIFICATION_PROMPT
     .replace('{sourceTitle}', sourcePaper.title)
     .replace('{sourceAbstract}', sourcePaper.abstract || 'No abstract available')
     .replace('{targetTitle}', targetPaper.title)
     .replace('{targetAbstract}', targetPaper.abstract || 'No abstract available');
 
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+  // 利用可能なモデルを試す
+  const models = ['gemini-1.5-flash', 'gemini-pro', 'gemini-1.0-pro'];
+  
+  for (const modelName of models) {
+    try {
+      console.log(`[LLM] Trying model: ${modelName}`);
+      
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt }]
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 256,
+            },
+          }),
+        }
+      );
 
-    // JSONを抽出してパース
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.warn('Could not extract JSON from Gemini response:', text);
-      return { contextType: 'background', confidence: 0.5 };
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`[LLM] Model ${modelName} error:`, response.status, errorData);
+        
+        // 404の場合は次のモデルを試す
+        if (response.status === 404) {
+          continue;
+        }
+        
+        // 429エラーは再スロー
+        if (response.status === 429) {
+          const error = new Error('Rate limited') as Error & { status: number };
+          error.status = 429;
+          throw error;
+        }
+        
+        continue;
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
+      console.log('[LLM] Gemini response:', text.substring(0, 150));
+
+      // JSONを抽出してパース
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.warn('[LLM] Could not extract JSON from Gemini response:', text);
+        return { contextType: 'background', confidence: 0.5 };
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      console.log('[LLM] Parsed result:', parsed.contextType, 'confidence:', parsed.confidence);
+      
+      return {
+        contextType: validateContextType(parsed.contextType),
+        confidence: Math.min(Math.max(parsed.confidence || 0.5, 0), 1),
+        explanation: parsed.explanation,
+      };
+    } catch (error: unknown) {
+      const errorObj = error as { status?: number; message?: string };
+      
+      // 429エラーは再スロー
+      if (errorObj.status === 429) {
+        throw error;
+      }
+      
+      console.error(`[LLM] Model ${modelName} error:`, errorObj.message);
     }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    return {
-      contextType: validateContextType(parsed.contextType),
-      confidence: Math.min(Math.max(parsed.confidence || 0.5, 0), 1),
-      explanation: parsed.explanation,
-    };
-  } catch (error) {
-    console.error('Gemini classification error:', error);
-    return { contextType: 'background', confidence: 0.3 };
   }
+  
+  console.error('[LLM] All models failed');
+  return { contextType: 'background', confidence: 0.3 };
 }
 
 // OpenAI APIで分類

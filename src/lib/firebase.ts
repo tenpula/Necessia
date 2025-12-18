@@ -14,11 +14,37 @@ const firebaseConfig = {
 
 // Firebaseが設定されているかどうかをチェック
 export function isFirebaseConfigured(): boolean {
-  return !!(
+  // 一時的にFirebaseを無効化してデバッグ
+  // TODO: Firebaseを使用する場合は以下のコメントを外す
+  console.log('Firebase temporarily disabled for debugging');
+  return false;
+  
+  /*
+  // すべての必要な環境変数が設定されているかチェック
+  const hasAllConfig = !!(
     firebaseConfig.apiKey &&
     firebaseConfig.projectId &&
-    firebaseConfig.apiKey !== 'undefined'
+    firebaseConfig.apiKey !== 'undefined' &&
+    firebaseConfig.projectId !== 'undefined' &&
+    // 空文字列やプレースホルダーもチェック
+    firebaseConfig.apiKey.length > 10 &&
+    firebaseConfig.projectId.length > 3 &&
+    !firebaseConfig.apiKey.startsWith('your-') &&
+    !firebaseConfig.projectId.startsWith('your-')
   );
+  
+  if (!hasAllConfig) {
+    return false;
+  }
+  
+  // 追加のチェック: authDomainも必要
+  if (!firebaseConfig.authDomain || firebaseConfig.authDomain === 'undefined') {
+    console.warn('Firebase: authDomain is not configured');
+    return false;
+  }
+  
+  return true;
+  */
 }
 
 // Firebaseアプリの初期化（シングルトン）
