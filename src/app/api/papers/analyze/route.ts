@@ -190,29 +190,17 @@ export async function POST(request: NextRequest) {
       }
     } else if (llmConfigured) {
       // Firestoreなし、LLMあり
-      // Gemini API無料枠: 15 RPM（1分あたり15リクエスト）
-      // 安全のため、1リクエストあたり10秒待機
-      const REQUEST_DELAY = 10000; // 10秒
+      // Gemini API Tier 1: 2000 RPM
+      // 余裕を持って少し待機を入れる
+      const REQUEST_DELAY = 50; // 50ms
       const MAX_RETRIES = 2;
       
-      // 一度に解析する数を制限（無料枠では時間がかかるため）
-      const MAX_ANALYZE = Math.min(limitedCitations.length, 5);
-      console.log(`[Analyze API] Processing ${MAX_ANALYZE} of ${limitedCitations.length} citations with LLM (rate limited)`);
+      // 全て解析する
+      const MAX_ANALYZE = limitedCitations.length;
+      console.log(`[Analyze API] Processing ${MAX_ANALYZE} citations with LLM`);
       
       for (let i = 0; i < limitedCitations.length; i++) {
         const citation = limitedCitations[i];
-        
-        // 最初のN件のみLLMで解析、残りはbackgroundとして処理
-        if (i >= MAX_ANALYZE) {
-          results.push({
-            sourceId: citation.sourceId,
-            targetId: citation.targetId,
-            contextType: 'background',
-            confidence: 0.5,
-            cached: false,
-          });
-          continue;
-        }
         
         let retryCount = 0;
         let success = false;
@@ -278,7 +266,7 @@ export async function POST(request: NextRequest) {
         comparison: results.filter(r => r.contextType === 'comparison').length,
         background: results.filter(r => r.contextType === 'background').length,
         llmAnalyzed: analyzedCount,
-        skipped: limitedCitations.length - MAX_ANALYZE,
+        skipped: 0,
       };
       console.log('[Analyze API] Classification stats:', stats);
     } else {
@@ -347,4 +335,3 @@ export async function GET(request: NextRequest) {
     message: 'Not found in cache. Use POST with paper data to analyze.',
   });
 }
-
