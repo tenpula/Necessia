@@ -16,17 +16,29 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { CitationNetwork, Paper } from '@/types/paper';
+import { CitationNetwork, Paper, Citation, CONTEXT_TYPE_INFO, AnalysisProgress as AnalysisProgressType } from '@/types/paper';
 import PaperNode from './PaperNode';
 import PaperDetailPanel from './PaperDetailPanel';
+import EdgeDetailPanel from './EdgeDetailPanel';
+import AnalysisProgress from './AnalysisProgress';
 
 interface CitationGraphProps {
   network: CitationNetwork;
+  onAnalysisComplete?: (updatedNetwork: CitationNetwork) => void;
 }
 
 const nodeTypes = {
   paper: PaperNode,
 };
+
+// 引用文脈に基づいてエッジの色を決定
+function getEdgeColor(citation: Citation, seedPaperId: string): string {
+  if (citation.contextType && citation.contextType !== 'background') {
+    return CONTEXT_TYPE_INFO[citation.contextType].color;
+  }
+  // Phase 1互換: 文脈タイプがない場合は方向で色分け
+  return citation.sourceId === seedPaperId ? '#06b6d4' : '#8b5cf6';
+}
 
 // レイアウト計算関数
 function calculateLayout(network: CitationNetwork): { nodes: Node[]; edges: Edge[] } {
@@ -38,13 +50,11 @@ function calculateLayout(network: CitationNetwork): { nodes: Node[]; edges: Edge
   
   citations.forEach((citation) => {
     if (citation.sourceId === seedPaper.id) {
-      // Seed論文が引用している論文
       const targetPaper = papers.find((p) => p.id === citation.targetId);
       if (targetPaper && targetPaper.id !== seedPaper.id) {
         referencedPapers.push(targetPaper);
       }
     } else if (citation.targetId === seedPaper.id) {
-      // Seed論文を引用している論文
       const sourcePaper = papers.find((p) => p.id === citation.sourceId);
       if (sourcePaper && sourcePaper.id !== seedPaper.id) {
         citingPapers.push(sourcePaper);
@@ -52,15 +62,12 @@ function calculateLayout(network: CitationNetwork): { nodes: Node[]; edges: Edge
     }
   });
   
-  // 重複を除去
   const uniqueReferenced = Array.from(new Map(referencedPapers.map(p => [p.id, p])).values());
   const uniqueCiting = Array.from(new Map(citingPapers.map(p => [p.id, p])).values());
   
   const nodes: Node[] = [];
-  const horizontalGap = 200;
   const verticalGap = 300;
   
-  // Seed論文を中央に配置
   nodes.push({
     id: seedPaper.id,
     type: 'paper',
@@ -68,7 +75,6 @@ function calculateLayout(network: CitationNetwork): { nodes: Node[]; edges: Edge
     data: { paper: seedPaper, isSeed: true },
   });
   
-  // 引用している論文を下に配置（円弧状）
   const refCount = uniqueReferenced.length;
   if (refCount > 0) {
     uniqueReferenced.forEach((paper, index) => {
@@ -86,7 +92,6 @@ function calculateLayout(network: CitationNetwork): { nodes: Node[]; edges: Edge
     });
   }
   
-  // 被引用論文を上に配置（円弧状）
   const citeCount = uniqueCiting.length;
   if (citeCount > 0) {
     uniqueCiting.forEach((paper, index) => {
@@ -104,69 +109,173 @@ function calculateLayout(network: CitationNetwork): { nodes: Node[]; edges: Edge
     });
   }
   
-  // エッジを作成
-  const edges: Edge[] = citations.map((citation) => ({
-    id: citation.id,
-    source: citation.sourceId,
-    target: citation.targetId,
-    type: 'smoothstep',
-    animated: citation.sourceId === seedPaper.id || citation.targetId === seedPaper.id,
-    style: { 
-      stroke: citation.sourceId === seedPaper.id ? '#06b6d4' : '#8b5cf6',
-      strokeWidth: 2,
-      opacity: 0.6,
-    },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: citation.sourceId === seedPaper.id ? '#06b6d4' : '#8b5cf6',
-    },
-  }));
+  // エッジを作成（文脈タイプに基づく色分け）
+  const edges: Edge[] = citations.map((citation) => {
+    const color = getEdgeColor(citation, seedPaper.id);
+    const hasContext = citation.contextType && citation.contextType !== 'background';
+    
+    return {
+      id: citation.id,
+      source: citation.sourceId,
+      target: citation.targetId,
+      type: 'smoothstep',
+      animated: hasContext,
+      style: { 
+        stroke: color,
+        strokeWidth: hasContext ? 3 : 2,
+        opacity: hasContext ? 0.8 : 0.5,
+      },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: color,
+      },
+      data: { citation },
+    };
+  });
   
   return { nodes, edges };
 }
 
-export default function CitationGraph({ network }: CitationGraphProps) {
+export default function CitationGraph({ network, onAnalysisComplete }: CitationGraphProps) {
+  const [currentNetwork, setCurrentNetwork] = useState(network);
+  const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgressType>({
+    total: 0,
+    analyzed: 0,
+    cached: 0,
+    status: 'idle',
+  });
+  
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => {
-      console.log('Calculating layout for network:', {
-        papersCount: network.papers.length,
-        citationsCount: network.citations.length,
-        seedPaper: network.seedPaper.title,
-      });
-      const layout = calculateLayout(network);
-      console.log('Layout calculated:', {
-        nodesCount: layout.nodes.length,
-        edgesCount: layout.edges.length,
-      });
-      return layout;
-    },
-    [network]
+    () => calculateLayout(currentNetwork),
+    [currentNetwork]
   );
   
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<{
+    citation: Citation;
+    sourcePaper: Paper;
+    targetPaper: Paper;
+  } | null>(null);
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
-  
-  // ノードやエッジが空の場合の警告
+  const analysisStarted = useRef(false);
+  const onAnalysisCompleteRef = useRef(onAnalysisComplete);
+
+  // ネットワーク変更時にノードとエッジを更新
   useEffect(() => {
-    if (nodes.length === 0) {
-      console.warn('No nodes to display');
-    }
-    if (edges.length === 0) {
-      console.warn('No edges to display');
-    }
-  }, [nodes.length, edges.length]);
-  
-  // レイアウトが変更されたときにfitViewを実行
+    const { nodes: newNodes, edges: newEdges } = calculateLayout(currentNetwork);
+    setNodes(newNodes);
+    setEdges(newEdges);
+  }, [currentNetwork, setNodes, setEdges]);
+
+  // 引用文脈の解析を実行（初回マウント時のみ）
   useEffect(() => {
-    if (reactFlowInstance.current && nodes.length > 0) {
-      setTimeout(() => {
-        reactFlowInstance.current?.fitView({ padding: 0.2, duration: 400 });
-      }, 100);
-    }
-  }, [nodes.length, edges.length]);
-  
+    if (analysisStarted.current) return;
+    analysisStarted.current = true;
+
+    const analyzeContexts = async () => {
+      // APIステータスを確認
+      try {
+        const statusResponse = await fetch('/api/papers/status');
+        const status = await statusResponse.json();
+        
+        if (!status.features.llmAnalysis) {
+          console.log('LLM analysis not configured, skipping context analysis');
+          return;
+        }
+      } catch (error) {
+        console.warn('Could not check API status:', error);
+        return;
+      }
+
+      const { citations, papers, seedPaper } = currentNetwork;
+      
+      if (citations.length === 0) return;
+
+      setAnalysisProgress({
+        total: citations.length,
+        analyzed: 0,
+        cached: 0,
+        status: 'analyzing',
+      });
+
+      // バッチで解析リクエストを送信
+      const citationsToAnalyze = citations.map((citation) => {
+        const sourcePaper = papers.find((p) => p.id === citation.sourceId);
+        const targetPaper = papers.find((p) => p.id === citation.targetId);
+        return {
+          sourceId: citation.sourceId,
+          targetId: citation.targetId,
+          sourcePaper: sourcePaper || seedPaper,
+          targetPaper: targetPaper || seedPaper,
+        };
+      });
+
+      try {
+        const response = await fetch('/api/papers/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ citations: citationsToAnalyze }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Analysis request failed');
+        }
+
+        const result = await response.json();
+        
+        // 結果を反映
+        const updatedCitations = citations.map((citation) => {
+          const analysisResult = result.results.find(
+            (r: { sourceId: string; targetId: string }) =>
+              r.sourceId === citation.sourceId && r.targetId === citation.targetId
+          );
+          
+          if (analysisResult) {
+            return {
+              ...citation,
+              contextType: analysisResult.contextType,
+              confidence: analysisResult.confidence,
+              analyzedAt: new Date().toISOString(),
+            };
+          }
+          return citation;
+        });
+
+        const updatedNetwork = {
+          ...currentNetwork,
+          citations: updatedCitations,
+        };
+
+        setCurrentNetwork(updatedNetwork);
+        setAnalysisProgress({
+          total: result.stats.total,
+          analyzed: result.stats.analyzed,
+          cached: result.stats.cached,
+          status: 'completed',
+        });
+
+        if (onAnalysisCompleteRef.current) {
+          onAnalysisCompleteRef.current(updatedNetwork);
+        }
+      } catch (error) {
+        console.error('Context analysis error:', error);
+        setAnalysisProgress((prev) => ({
+          ...prev,
+          status: 'error',
+        }));
+      }
+    };
+
+    // 少し遅延させてから解析開始
+    const timer = setTimeout(analyzeContexts, 500);
+    return () => clearTimeout(timer);
+    // 初回マウント時のみ実行するため、依存配列は空
+    // currentNetworkの変更は別のuseEffectで処理
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const onInit = useCallback((instance: ReactFlowInstance) => {
     reactFlowInstance.current = instance;
     setTimeout(() => {
@@ -177,11 +286,41 @@ export default function CitationGraph({ network }: CitationGraphProps) {
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     const nodeData = node.data as { paper: Paper; isSeed: boolean };
     setSelectedPaper(nodeData.paper);
+    setSelectedEdge(null);
   }, []);
+
+  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+    const citation = (edge.data as { citation: Citation })?.citation;
+    if (!citation) return;
+
+    const sourcePaper = currentNetwork.papers.find((p) => p.id === citation.sourceId);
+    const targetPaper = currentNetwork.papers.find((p) => p.id === citation.targetId);
+
+    if (sourcePaper && targetPaper) {
+      setSelectedEdge({ citation, sourcePaper, targetPaper });
+      setSelectedPaper(null);
+    }
+  }, [currentNetwork.papers]);
   
   const onPaneClick = useCallback(() => {
     setSelectedPaper(null);
+    setSelectedEdge(null);
   }, []);
+
+  // 文脈タイプ別の統計を計算
+  const contextStats = useMemo(() => {
+    const stats = {
+      methodology: 0,
+      critique: 0,
+      comparison: 0,
+      background: 0,
+    };
+    currentNetwork.citations.forEach((c) => {
+      const type = c.contextType || 'background';
+      stats[type]++;
+    });
+    return stats;
+  }, [currentNetwork.citations]);
 
   return (
     <div className="w-full h-full relative" style={{ width: '100%', height: '100%' }}>
@@ -191,6 +330,7 @@ export default function CitationGraph({ network }: CitationGraphProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
         onInit={onInit}
         nodeTypes={nodeTypes}
@@ -198,6 +338,7 @@ export default function CitationGraph({ network }: CitationGraphProps) {
         maxZoom={2}
         className="bg-slate-950"
         style={{ width: '100%', height: '100%' }}
+        edgesFocusable={true}
       >
         <Background color="#334155" gap={30} size={1} />
         <Controls className="!bg-slate-800 !border-slate-700 !rounded-xl overflow-hidden [&>button]:!bg-slate-800 [&>button]:!border-slate-700 [&>button]:!fill-slate-300 [&>button:hover]:!bg-slate-700" />
@@ -216,11 +357,39 @@ export default function CitationGraph({ network }: CitationGraphProps) {
             <h3 className="text-cyan-400 font-semibold mb-2">Network Statistics</h3>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
               <span className="text-slate-400">Papers:</span>
-              <span className="text-white font-medium">{network.papers.length}</span>
+              <span className="text-white font-medium">{currentNetwork.papers.length}</span>
               <span className="text-slate-400">Citations:</span>
-              <span className="text-white font-medium">{network.citations.length}</span>
+              <span className="text-white font-medium">{currentNetwork.citations.length}</span>
             </div>
+            
+            {/* 文脈タイプ統計 */}
+            {analysisProgress.status === 'completed' && (
+              <div className="mt-3 pt-3 border-t border-slate-700/50">
+                <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-2">Context Types</h4>
+                <div className="space-y-1">
+                  {Object.entries(contextStats).map(([type, count]) => {
+                    const info = CONTEXT_TYPE_INFO[type as keyof typeof CONTEXT_TYPE_INFO];
+                    return (
+                      <div key={type} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1">
+                          <span>{info.emoji}</span>
+                          <span style={{ color: info.color }}>{info.label}</span>
+                        </div>
+                        <span className="text-slate-400">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* 解析進捗 */}
+          {analysisProgress.status !== 'idle' && analysisProgress.status !== 'completed' && (
+            <div className="mt-2">
+              <AnalysisProgress progress={analysisProgress} />
+            </div>
+          )}
         </Panel>
         
         {/* 凡例 */}
@@ -228,6 +397,7 @@ export default function CitationGraph({ network }: CitationGraphProps) {
           <div className="bg-slate-900/90 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50">
             <h3 className="text-cyan-400 font-semibold mb-3">Legend</h3>
             <div className="space-y-2 text-sm">
+              {/* ノードタイプ */}
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full bg-cyan-500/50 border-2 border-cyan-400" />
                 <span className="text-slate-300">Seed Paper</span>
@@ -240,14 +410,26 @@ export default function CitationGraph({ network }: CitationGraphProps) {
                 <div className="w-4 h-4 rounded-md bg-slate-600 border-2 border-slate-500" />
                 <span className="text-slate-300">Conference</span>
               </div>
-              <div className="flex items-center gap-2 mt-3">
-                <div className="w-6 h-0.5 bg-cyan-500" />
-                <span className="text-slate-300">References</span>
+              
+              {/* エッジタイプ（Phase 2） */}
+              <div className="mt-3 pt-3 border-t border-slate-700/50">
+                <h4 className="text-xs text-slate-400 uppercase tracking-wider mb-2">Citation Context</h4>
+                {Object.entries(CONTEXT_TYPE_INFO).map(([type, info]) => (
+                  <div key={type} className="flex items-center gap-2 mt-1">
+                    <div 
+                      className="w-6 h-0.5" 
+                      style={{ backgroundColor: info.color }}
+                    />
+                    <span className="text-xs" style={{ color: info.color }}>
+                      {info.emoji} {info.label}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-0.5 bg-purple-500" />
-                <span className="text-slate-300">Cited by</span>
-              </div>
+              
+              <p className="text-xs text-slate-500 mt-2">
+                Click edges for details
+              </p>
             </div>
           </div>
         </Panel>
@@ -258,10 +440,18 @@ export default function CitationGraph({ network }: CitationGraphProps) {
         <PaperDetailPanel
           paper={selectedPaper}
           onClose={() => setSelectedPaper(null)}
-          isSeed={selectedPaper.id === network.seedPaper.id}
+          isSeed={selectedPaper.id === currentNetwork.seedPaper.id}
+        />
+      )}
+
+      {selectedEdge && (
+        <EdgeDetailPanel
+          citation={selectedEdge.citation}
+          sourcePaper={selectedEdge.sourcePaper}
+          targetPaper={selectedEdge.targetPaper}
+          onClose={() => setSelectedEdge(null)}
         />
       )}
     </div>
   );
 }
-
