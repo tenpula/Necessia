@@ -95,17 +95,17 @@ export default function Home() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600
                             flex items-center justify-center shadow-lg shadow-cyan-500/20 ring-1 ring-white/10">
                 <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                </svg>
-              </div>
-              <div>
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+            </div>
+            <div>
                 <h1 className="text-xl font-bold text-white tracking-tight leading-none">
-                  Research Gap Visualizer
-                </h1>
+                Research Gap Visualizer
+              </h1>
                 <p className="text-xs text-slate-400 mt-1 font-medium tracking-wide">COMPUTER SCIENCE EDITION</p>
               </div>
             </div>
