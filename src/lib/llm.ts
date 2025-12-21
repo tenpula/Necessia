@@ -8,7 +8,10 @@ interface ClassificationResult {
   explanation?: string;
 }
 
-const GEMINI_MODEL_NAME = 'gemini-2.0-flash-lite';
+// 安定版のモデルIDを指定
+const GEMINI_MODEL_NAME = 'gemini-2.0-flash';
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 2000;
 
 // LLMモデル名を取得
 export function getLLMModelName(): string {
@@ -48,6 +51,33 @@ Respond in JSON format ONLY:
   "explanation": "brief explanation"
 }`;
 
+// デバッグ用：利用可能なモデル一覧を表示
+async function logAvailableModels(apiKey: string) {
+  try {
+    console.log('[LLM] Fetching list of available models...');
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+    if (!response.ok) {
+      console.error('[LLM] Failed to list models:', response.status);
+      return;
+    }
+    const data = await response.json();
+    const models = data.models || [];
+    interface Model {
+      name: string;
+      supportedGenerationMethods?: string[];
+    }
+    const availableModels = models
+      .filter((m: Model) => m.supportedGenerationMethods?.includes('generateContent'))
+      .map((m: Model) => m.name.replace('models/', ''));
+    
+    console.log('[LLM] Available models for generateContent:', availableModels);
+  } catch (error) {
+    console.error('[LLM] Error listing models:', error);
+  }
+}
+
 // メイン分類関数
 export async function classifyCitationContext(
   sourcePaper: Paper,
@@ -65,73 +95,109 @@ export async function classifyCitationContext(
     .replace('{targetTitle}', targetPaper.title)
     .replace('{targetAbstract}', targetPaper.abstract || 'No abstract available');
 
-  try {
-    console.log(`[LLM] Requesting classification using ${GEMINI_MODEL_NAME}`);
-    
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL_NAME}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 256,
-            responseMimeType: 'application/json',
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`[LLM] Model ${GEMINI_MODEL_NAME} error:`, response.status, errorData);
-      
-      if (response.status === 429) {
-        throw new Error('Rate limited');
-      }
-      throw new Error(`Gemini API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    
-    let parsed: { contextType: string; confidence?: number; explanation?: string } | null = null;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      parsed = JSON.parse(text);
-    } catch {
-      // JSON形式でない場合、正規表現で抽出を試みる
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          parsed = JSON.parse(jsonMatch[0]);
-        } catch (e) {
-          console.error('[LLM] Failed to parse extracted JSON:', e);
+      console.log(`[LLM] Requesting classification using ${GEMINI_MODEL_NAME} (attempt ${attempt + 1})`);
+      
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL_NAME}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt }]
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 256,
+              responseMimeType: 'application/json',
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        
+        // 404 Not Found: モデル名が間違っている可能性があるため一覧を表示
+        if (response.status === 404) {
+          console.error(`[LLM] Model ${GEMINI_MODEL_NAME} not found.`);
+          if (attempt === 0) await logAvailableModels(apiKey);
+          break; // リトライしても無駄なので終了
+        }
+
+        // 429 Rate Limited
+        if (response.status === 429) {
+          const message = errorData.error?.message || '';
+          
+          // 無料枠上限が0（利用不可）の場合はリトライしない
+          if (message.includes('limit: 0')) {
+             console.error(`[LLM] Quota limit is 0 for ${GEMINI_MODEL_NAME}. This model is not available for your account/key.`);
+             if (attempt === 0) await logAvailableModels(apiKey);
+             break;
+          }
+
+          console.warn(`[LLM] Rate limited (429) for model ${GEMINI_MODEL_NAME}.`);
+          if (attempt < MAX_RETRIES) {
+             const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
+             console.log(`[LLM] Retrying in ${delay}ms...`);
+             await new Promise(r => setTimeout(r, delay));
+             continue;
+          }
+          throw new Error('Rate limited after max retries');
+        }
+        
+        console.error(`[LLM] Model ${GEMINI_MODEL_NAME} error:`, response.status, errorData);
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
+      let parsed: { contextType: string; confidence?: number; explanation?: string } | null = null;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        // JSON形式でない場合、正規表現で抽出を試みる
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            parsed = JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            console.error('[LLM] Failed to parse extracted JSON:', e);
+          }
         }
       }
-    }
 
-    if (!parsed) {
-      console.warn('[LLM] Could not extract valid JSON from Gemini response:', text);
-      return { contextType: 'background', confidence: 0.5 };
-    }
+      if (!parsed) {
+        console.warn('[LLM] Could not extract valid JSON from Gemini response:', text);
+        return { contextType: 'background', confidence: 0.5 };
+      }
 
-    console.log('[LLM] Parsed result:', parsed.contextType, 'confidence:', parsed.confidence);
-    
-    return {
-      contextType: validateContextType(parsed.contextType),
-      confidence: Math.min(Math.max(parsed.confidence || 0.5, 0), 1),
-      explanation: parsed.explanation,
-    };
-  } catch (error) {
-    console.error('[LLM] Classification error:', error);
-    return { contextType: 'background', confidence: 0.3 };
+      console.log('[LLM] Parsed result:', parsed.contextType, 'confidence:', parsed.confidence);
+      
+      return {
+        contextType: validateContextType(parsed.contextType),
+        confidence: Math.min(Math.max(parsed.confidence || 0.5, 0), 1),
+        explanation: parsed.explanation,
+      };
+    } catch (error) {
+      if (attempt === MAX_RETRIES) {
+        console.error('[LLM] Classification failed after retries:', error);
+        return { contextType: 'background', confidence: 0.3 };
+      }
+      
+      // ネットワークエラーなどはリトライ
+      console.warn(`[LLM] Attempt ${attempt + 1} failed with error:`, error);
+      const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
+      await new Promise(r => setTimeout(r, delay));
+    }
   }
+  
+  return { contextType: 'background', confidence: 0.3 };
 }
 
 // 文脈タイプのバリデーション
@@ -154,7 +220,7 @@ export async function classifyCitationContextsBatch(
   onProgress?: (completed: number, total: number) => void
 ): Promise<Map<string, ClassificationResult>> {
   const results = new Map<string, ClassificationResult>();
-  const delayBetweenRequests = 500; // 安全のため間隔を広げる
+  const delayBetweenRequests = 50; // 50ms間隔 (20リクエスト/秒程度、RPM 1200)
 
   for (let i = 0; i < pairs.length; i++) {
     const { source, target } = pairs[i];
@@ -175,6 +241,7 @@ export async function classifyCitationContextsBatch(
 
     // レート制限のため待機
     if (i < pairs.length - 1) {
+      console.log(`[LLM] Waiting ${delayBetweenRequests}ms before next request...`);
       await new Promise((resolve) => setTimeout(resolve, delayBetweenRequests));
     }
   }
