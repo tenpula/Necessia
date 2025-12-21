@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 interface SearchFormProps {
   onSearch: (query: string) => void;
@@ -23,6 +23,14 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
     { label: 'DOI', value: '10.48550/arXiv.1706.03762' },
   ];
 
+  const handleQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+  }, []);
+
+  const handleExampleClick = useCallback((value: string) => {
+    setQuery(value);
+  }, []);
+
   return (
     <div className="w-full max-w-3xl mx-auto">
       <form onSubmit={handleSubmit} className="relative">
@@ -30,7 +38,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={handleQueryChange}
             placeholder="Enter arXiv URL, DOI, or paper title..."
             className="w-full px-6 py-4 text-lg bg-slate-800/50 border border-slate-600/50 rounded-2xl
                      text-slate-100 placeholder-slate-400
@@ -80,7 +88,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
         {exampleQueries.map((example) => (
           <button
             key={example.value}
-            onClick={() => setQuery(example.value)}
+            onClick={() => handleExampleClick(example.value)}
             className="text-sm px-3 py-1 bg-slate-700/50 hover:bg-slate-600/50 
                      text-slate-300 rounded-lg transition-colors duration-150"
             disabled={isLoading}

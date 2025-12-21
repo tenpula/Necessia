@@ -10,10 +10,12 @@ interface SystemStatus {
   features: {
     cache: boolean;
     llmAnalysis: boolean;
+    gapFinding?: boolean;
   };
   config: {
     llmModel: string | null;
     cacheProvider: string | null;
+    embeddingModel?: string | null;
   };
   phase: number;
 }
@@ -86,6 +88,12 @@ export default function Home() {
     console.log('Citation context analysis completed');
   };
 
+  const handleResetError = () => {
+    setError(null);
+    setNetwork(null);
+    setActiveTab('search');
+  };
+
   const currentPhase = systemStatus?.phase || 1;
 
   return (
@@ -145,12 +153,20 @@ export default function Home() {
               </span>
             )}
             <span className={`px-3 py-1 text-xs font-medium rounded-full border ${
-              currentPhase === 2 
+              currentPhase === 3 
+                ? 'bg-pink-500/10 text-pink-400 border-pink-500/20' 
+                : currentPhase === 2 
                 ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' 
                 : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
             }`}>
               Phase {currentPhase}
             </span>
+            {systemStatus?.features.gapFinding && (
+              <span className="hidden sm:flex px-3 py-1 text-xs font-semibold bg-pink-500/10 text-pink-400 rounded-full border border-pink-500/20 items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse"></span>
+                Gap Finding Active
+              </span>
+            )}
           </div>
         </div>
       </header>
@@ -191,6 +207,88 @@ export default function Home() {
               onAnalysisComplete={handleAnalysisComplete}
             />
           </div>
+        ) : error ? (
+          // エラー画面
+          <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
+            {/* 背景装飾 */}
+            <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-20 pointer-events-none"></div>
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-red-500/10 rounded-full blur-[100px] mix-blend-screen animate-pulse-slow" />
+              <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-orange-500/10 rounded-full blur-[100px] mix-blend-screen animate-pulse-slow" style={{ animationDelay: '1s' }} />
+            </div>
+
+            <div className="relative z-10 w-full max-w-2xl mx-auto text-center">
+              <div className="bg-slate-900/90 backdrop-blur-xl border border-red-500/30 rounded-3xl p-12 shadow-2xl shadow-red-900/20 ring-1 ring-red-500/10">
+                {/* エラーアイコン */}
+                <div className="mb-6 flex justify-center">
+                  <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center border-2 border-red-500/30">
+                    <svg className="w-10 h-10 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* エラータイトル */}
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  エラーが発生しました
+                </h2>
+
+                {/* エラーメッセージ */}
+                <div className="mb-8 px-6 py-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+                  <p className="text-red-300 font-medium text-lg leading-relaxed">
+                    {error}
+                  </p>
+                </div>
+
+                {/* 対応形式の説明 */}
+                <div className="mb-8 px-6 py-4 bg-slate-800/50 border border-slate-700/50 rounded-xl text-left">
+                  <p className="text-slate-400 text-sm mb-3 font-semibold">対応している形式:</p>
+                  <ul className="space-y-2 text-slate-300 text-sm">
+                    <li className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      arXiv URL (例: https://arxiv.org/abs/1706.03762)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      arXiv ID (例: 2010.11929)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      DOI (例: 10.48550/arXiv.1706.03762)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      論文タイトル
+                    </li>
+                  </ul>
+                </div>
+
+                {/* 戻るボタン */}
+                <button
+                  onClick={handleResetError}
+                  className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 
+                           hover:from-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl
+                           transition-all duration-200 shadow-lg shadow-cyan-500/20 hover:shadow-xl hover:shadow-cyan-500/30
+                           transform hover:scale-105"
+                >
+                  <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                  </svg>
+                  <span>最初の画面に戻る</span>
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
           // タブコンテンツ
           <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -202,8 +300,11 @@ export default function Home() {
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                   <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] mix-blend-screen animate-pulse-slow" />
                   <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[100px] mix-blend-screen animate-pulse-slow" style={{ animationDelay: '1s' }} />
-                  {currentPhase === 2 && (
+                  {currentPhase >= 2 && (
                     <div className="absolute top-1/3 left-2/3 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] mix-blend-screen" />
+                  )}
+                  {currentPhase === 3 && (
+                    <div className="absolute bottom-1/3 right-1/3 w-[350px] h-[350px] bg-pink-500/10 rounded-full blur-[100px] mix-blend-screen" />
                   )}
                 </div>
 
@@ -232,18 +333,6 @@ export default function Home() {
                       <span className="font-medium tracking-wide">{progress}</span>
                     </div>
                   )}
-
-                  {/* エラー表示 */}
-                  {error && (
-                    <div className="mt-8 px-6 py-4 bg-red-500/10 border border-red-500/20 rounded-xl max-w-xl mx-auto animate-in shake">
-                      <div className="flex items-center gap-3 justify-center">
-                        <svg className="w-5 h-5 text-red-400" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-                        </svg>
-                        <span className="text-red-300 font-medium">{error}</span>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             ) : (
@@ -255,7 +344,7 @@ export default function Home() {
       </main>
 
       {/* フッター */}
-      {!network && (
+      {!network && !error && (
         <footer className="px-8 py-6 border-t border-slate-800/50 bg-slate-950/50 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
             <div className="flex items-center gap-4">

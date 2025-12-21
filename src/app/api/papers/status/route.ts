@@ -18,16 +18,21 @@ export async function GET() {
     firebaseConfigured,
   });
   
+  // Phase判定: LLMが設定されていればPhase 2以上、Embedding APIも使えるのでPhase 3
+  const phase = llmConfigured ? 3 : 1;
+  
   return NextResponse.json({
     features: {
       cache: firebaseConfigured,
       llmAnalysis: llmConfigured,
+      gapFinding: llmConfigured, // Phase 3: Gap検出機能
     },
     config: {
       llmModel: llmConfigured ? getLLMModelName() : null,
       cacheProvider: firebaseConfigured ? 'firestore' : null,
+      embeddingModel: llmConfigured ? 'text-embedding-004' : null,
     },
-    phase: llmConfigured ? 2 : 1,
+    phase,
   });
 }
 

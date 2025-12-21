@@ -122,6 +122,17 @@ export interface OpenAlexSearchResponse {
   results: OpenAlexWork[];
 }
 
+// Gap提案（Phase 3）
+export interface GapProposal {
+  paperA: Paper;
+  paperB: Paper;
+  similarityScore: number; // ベクトル類似度 (0-1)
+  coCitationCount: number; // 共通引用元の数
+  commonCitations: Paper[]; // 共通引用元の論文リスト
+  reasoning: string; // LLMが生成した説明文
+  confidence: number; // 提案の信頼度 (0-1)
+}
+
 // 引用文脈の表示用情報
 export const CONTEXT_TYPE_INFO: Record<CitationContextType, {
   label: string;
