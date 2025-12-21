@@ -1,14 +1,7 @@
 // 引用文脈解析 API Route
 import { NextRequest, NextResponse } from 'next/server';
 import { classifyCitationContext, isLLMConfigured, getLLMModelName } from '@/lib/llm';
-import {
-  getCachedCitationContext,
-  saveCitationContextToCache,
-  getBatchCachedCitationContexts,
-  saveBatchCitationContextsToCache,
-} from '@/lib/cache';
-import { isFirebaseConfigured } from '@/lib/firebase';
-import { Paper, CitationContextType, CachedCitationContext } from '@/types/paper';
+import { Paper, CitationContextType } from '@/types/paper';
 
 interface AnalyzeRequest {
   citations: {
@@ -53,7 +46,6 @@ export async function POST(request: NextRequest) {
     console.log(`[Analyze API] Processing ${limitedCitations.length} citations`);
 
     const results: AnalyzeResponse['results'] = [];
-    let cachedCount = 0;
     let analyzedCount = 0;
 
     // LLMが設定されているかチェック
@@ -61,134 +53,7 @@ export async function POST(request: NextRequest) {
     const llmModel = llmConfigured ? getLLMModelName() : null;
     console.log(`[Analyze API] LLM configured: ${llmConfigured}, model: ${llmModel}`);
 
-    // Firestoreが設定されている場合、キャッシュをチェック
-    const firebaseConfigured = isFirebaseConfigured();
-    console.log(`[Analyze API] Firebase configured: ${firebaseConfigured}`);
-    
-    if (firebaseConfigured) {
-      console.log('[Analyze API] Checking Firebase cache...');
-      const cacheKeys = limitedCitations.map((c) => ({
-        sourceId: c.sourceId,
-        targetId: c.targetId,
-      }));
-
-      try {
-        const cachedResults = await getBatchCachedCitationContexts(cacheKeys);
-        console.log(`[Analyze API] Cache check complete, found ${cachedResults.size} cached items`);
-
-        for (const citation of limitedCitations) {
-          const cacheKey = `${citation.sourceId.replace('https://openalex.org/', '')}->${citation.targetId.replace('https://openalex.org/', '')}`;
-          const cached = cachedResults.get(cacheKey);
-
-          if (cached) {
-            // キャッシュヒット
-            results.push({
-              sourceId: citation.sourceId,
-              targetId: citation.targetId,
-              contextType: cached.contextType,
-              confidence: cached.confidence,
-              cached: true,
-            });
-            cachedCount++;
-          } else if (llmConfigured) {
-            // キャッシュミス - LLMで解析
-            console.log(`[Analyze API] Analyzing citation ${analyzedCount + 1}/${limitedCitations.length - cachedCount}`);
-            try {
-              const classification = await classifyCitationContext(
-                citation.sourcePaper,
-                citation.targetPaper
-              );
-
-              results.push({
-                sourceId: citation.sourceId,
-                targetId: citation.targetId,
-                contextType: classification.contextType,
-                confidence: classification.confidence,
-                cached: false,
-              });
-
-              // キャッシュに保存（エラーを無視）
-              try {
-                await saveCitationContextToCache({
-                  sourceId: citation.sourceId,
-                  targetId: citation.targetId,
-                  sourcePaperTitle: citation.sourcePaper.title,
-                  targetPaperTitle: citation.targetPaper.title,
-                  contextType: classification.contextType,
-                  confidence: classification.confidence,
-                  llmModel: llmModel || 'unknown',
-                });
-              } catch (cacheError) {
-                console.warn('[Analyze API] Cache save error:', cacheError);
-              }
-
-              analyzedCount++;
-
-              // レート制限のため少し待機
-              await new Promise((resolve) => setTimeout(resolve, 100));
-            } catch (error) {
-              console.error('[Analyze API] LLM analysis error:', error);
-              // エラー時はbackgroundとして扱う
-              results.push({
-                sourceId: citation.sourceId,
-                targetId: citation.targetId,
-                contextType: 'background',
-                confidence: 0.3,
-                cached: false,
-              });
-            }
-          } else {
-            // LLMが設定されていない場合はbackground
-            results.push({
-              sourceId: citation.sourceId,
-              targetId: citation.targetId,
-              contextType: 'background',
-              confidence: 0.5,
-              cached: false,
-            });
-          }
-        }
-      } catch (cacheError) {
-        console.error('[Analyze API] Firebase cache error:', cacheError);
-        // キャッシュエラー時はLLMのみで処理を続行
-        console.log('[Analyze API] Falling back to LLM-only mode');
-        for (const citation of limitedCitations) {
-          if (llmConfigured) {
-            try {
-              const classification = await classifyCitationContext(
-                citation.sourcePaper,
-                citation.targetPaper
-              );
-              results.push({
-                sourceId: citation.sourceId,
-                targetId: citation.targetId,
-                contextType: classification.contextType,
-                confidence: classification.confidence,
-                cached: false,
-              });
-              analyzedCount++;
-              await new Promise((resolve) => setTimeout(resolve, 100));
-            } catch (llmError) {
-              results.push({
-                sourceId: citation.sourceId,
-                targetId: citation.targetId,
-                contextType: 'background',
-                confidence: 0.3,
-                cached: false,
-              });
-            }
-          } else {
-            results.push({
-              sourceId: citation.sourceId,
-              targetId: citation.targetId,
-              contextType: 'background',
-              confidence: 0.5,
-              cached: false,
-            });
-          }
-        }
-      }
-    } else if (llmConfigured) {
+    if (llmConfigured) {
       // Firestoreなし、LLMあり
       // Gemini API Tier 1: 2000 RPM
       // 余裕を持って少し待機を入れる
@@ -287,7 +152,7 @@ export async function POST(request: NextRequest) {
       stats: {
         total: results.length,
         analyzed: analyzedCount,
-        cached: cachedCount,
+        cached: 0,
         llmModel,
       },
     };
@@ -315,23 +180,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // キャッシュをチェック
-  if (isFirebaseConfigured()) {
-    const cached = await getCachedCitationContext(sourceId, targetId);
-    if (cached) {
-      return NextResponse.json({
-        contextType: cached.contextType,
-        confidence: cached.confidence,
-        contextSnippet: cached.contextSnippet,
-        cached: true,
-      });
-    }
-  }
-
   return NextResponse.json({
     contextType: 'background',
     confidence: 0.5,
     cached: false,
-    message: 'Not found in cache. Use POST with paper data to analyze.',
+    message: 'Use POST with paper data to analyze.',
   });
 }

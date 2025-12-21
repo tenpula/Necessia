@@ -171,7 +171,6 @@ export default function CitationGraph({ network, onAnalysisComplete }: CitationG
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgressType>({
     total: 0,
     analyzed: 0,
-    cached: 0,
     status: 'idle',
   });
   
@@ -328,7 +327,6 @@ export default function CitationGraph({ network, onAnalysisComplete }: CitationG
       setAnalysisProgress({
         total: citations.length,
         analyzed: 0,
-        cached: 0,
         status: 'analyzing',
       });
 
@@ -400,7 +398,6 @@ export default function CitationGraph({ network, onAnalysisComplete }: CitationG
         setAnalysisProgress({
           total: result.stats.total,
           analyzed: result.stats.analyzed,
-          cached: result.stats.cached,
           status: 'completed',
         });
 

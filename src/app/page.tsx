@@ -8,13 +8,11 @@ import { CitationNetwork } from '@/types/paper';
 
 interface SystemStatus {
   features: {
-    cache: boolean;
     llmAnalysis: boolean;
     gapFinding?: boolean;
   };
   config: {
     llmModel: string | null;
-    cacheProvider: string | null;
     embeddingModel?: string | null;
   };
   phase: number;

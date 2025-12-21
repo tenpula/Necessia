@@ -1,19 +1,21 @@
+とりあえずアイデアを形にして、内容を紐解いていくという手順が前後した進め方をしています。
+8割バイブコーディングなので、頼りすぎている自覚からくる、少し引け目を感じてます。
+
 # Necessia
 
 情報工学（Computer Science）分野の研究者向け、論文間の引用関係を可視化し、研究の空白（Gap）を発見するWebサービスです。
 
-## 🚀 現在のフェーズ
+##  現在のフェーズ
 
 **Phase 3: Gap Finding & Analysis（研究空白の発見）** ✅
 
-- ✅ arXiv URL、DOI、論文タイトルでの検索
-- ✅ OpenAlex APIから引用リスト取得
-- ✅ インタラクティブなグラフ可視化
-- ✅ LLM導入（引用文脈の分類：支持/批判/比較/背景）
-- ✅ Firestoreへのキャッシュ機構
-- ✅ ベクトル検索による「Gap」提案機能（Co-citation + 類似度分析）
+-  arXiv URL、DOI、論文タイトルでの検索
+-  OpenAlex APIから引用リスト取得
+-  インタラクティブなグラフ可視化
+-  LLM導入（引用文脈の分類：支持/批判/比較/背景）
+-  ベクトル検索による「Gap」提案機能（Co-citation + 類似度分析）
 
-## 🛠 技術スタック
+##  技術スタック
 
 - **Frontend:** Next.js 16 (App Router) + React 19 + TypeScript
 - **Styling:** Tailwind CSS 4
@@ -21,10 +23,9 @@
 - **Data Source:** OpenAlex API
 - **LLM:** Gemini 2.0 Flash / GPT-4o-mini（引用文脈の分類）
 - **Embeddings:** Google Generative AI Embeddings API（Gap検出用）
-- **Cache:** Firebase Firestore
 - **Rate Limiting:** 自動レート制限管理（1秒あたり10リクエスト、1日10万リクエスト）
 
-## 📦 セットアップ
+##  セットアップ
 
 ```bash
 # 依存関係のインストール
@@ -40,7 +41,7 @@ npm run dev
 npm run build
 ```
 
-## ⚙️ 環境変数
+##  環境変数
 
 `.env.local`ファイルを作成して、以下の環境変数を設定してください：
 
@@ -52,7 +53,7 @@ npm run build
 OPENALEX_EMAIL=your-email@example.com
 ```
 
-### Phase 2/3: LLM設定（いずれか1つ）
+### Phase 2/3: LLM設定（必須）
 
 ```env
 # Gemini API（推奨: 無料枠あり、コスト効率良好）
@@ -65,25 +66,12 @@ GEMINI_API_KEY=your-gemini-api-key
 OPENAI_API_KEY=your-openai-api-key
 ```
 
-### Phase 2/3: Firebase/Firestore設定（キャッシュ用）
-
-```env
-# Firebaseコンソールでプロジェクト作成後、
-# プロジェクト設定 > 全般 > マイアプリ > SDKの構成 から取得
-NEXT_PUBLIC_FIREBASE_API_KEY=your-firebase-api-key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
-```
-
 > **注意:**
 > - LLM APIキーが設定されていない場合、Phase 1モードで動作します（引用文脈分類とGap検出は無効）
-> - Firebaseが設定されていない場合、キャッシュは無効になります
 > - Phase 3のGap検出機能には、LLM APIキー（Gemini推奨）が必要です
+> - ユーザーは各自のAPIキーを設定して使用します
 
-## 🔍 使い方
+##  使い方
 
 1. 検索フォームにarXiv URL、DOI、または論文タイトルを入力
 2. 「Visualize」ボタンをクリック
@@ -98,7 +86,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
 - **DOI:** `10.48550/arXiv.1706.03762` または `https://doi.org/10.48550/arXiv.1706.03762`
 - **タイトル:** `Attention Is All You Need`
 
-## 🎨 引用文脈の種類（Phase 2）
+##  引用文脈の種類（Phase 2）
 
 | 種類 | 色 | 説明 |
 |------|-----|------|
@@ -107,7 +95,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
 | 🟣 Comparison | 紫 | 比較実験の対象 |
 | ⚪ Background | グレー | 一般的な関連研究 |
 
-## 🔬 Gap検出機能（Phase 3）
+##  Gap検出機能（Phase 3）
 
 Necessiaは、以下のロジックに基づいて研究の空白（Gap）を自動検出します：
 
@@ -117,25 +105,24 @@ Necessiaは、以下のロジックに基づいて研究の空白（Gap）を自
 
 Gap提案は、グラフビュー内のパネルから確認できます。
 
-## 🗺 ロードマップ
+##  ロードマップ
 
-### Phase 1: MVP ✅
+### Phase 1: MVP 
 - [x] arXiv URL/DOI/タイトル検索
 - [x] OpenAlex API連携
 - [x] グラフ可視化
 
-### Phase 2: Context & Caching ✅
+### Phase 2: Context & Analysis 
 - [x] LLM導入（引用文脈の分類）
-- [x] Firestoreへのキャッシュ機構
 - [x] 文脈タイプ別のエッジ色分け
 - [x] エッジクリックで詳細表示
 
-### Phase 3: Gap Finding & Analysis ✅
+### Phase 3: Gap Finding & Analysis 
 - [x] ベクトル検索による「Gap」提案機能
 - [x] Co-citation分析による見落とし検出
 - [x] Gap提案パネルの実装
 - [ ] PDFアップロード機能（将来の拡張）
 
-## 📄 ライセンス
+##  ライセンス
 
-MIT License
+Apache License 2.0

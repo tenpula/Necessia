@@ -73,11 +73,6 @@ export default function AnalysisProgress({ progress }: AnalysisProgressProps) {
             </>
           )}
         </div>
-        {progress.cached > 0 && (
-          <span className="text-slate-500">
-            {progress.cached} from cache
-          </span>
-        )}
       </div>
     </div>
   );

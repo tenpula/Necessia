@@ -45,24 +45,8 @@ export interface CitationNetwork {
 export interface AnalysisProgress {
   total: number;
   analyzed: number;
-  cached: number;
   status: 'idle' | 'analyzing' | 'completed' | 'error';
   currentPaper?: string;
-}
-
-// キャッシュされた引用文脈データ
-export interface CachedCitationContext {
-  id: string; // sourceId + "->" + targetId
-  sourceId: string;
-  targetId: string;
-  sourcePaperTitle: string;
-  targetPaperTitle: string;
-  contextType: CitationContextType;
-  contextSnippet?: string;
-  confidence: number;
-  createdAt: string;
-  updatedAt: string;
-  llmModel: string;
 }
 
 // OpenAlex APIレスポンスの型
