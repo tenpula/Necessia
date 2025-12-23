@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import SearchForm from '@/components/SearchForm';
 import CitationGraph from '@/components/CitationGraph';
 import FeaturesView from '@/components/FeaturesView';
-import { CitationNetwork } from '@/types/paper';
+import { CitationNetwork, GapProposal, AnalysisProgress } from '@/types/paper';
 import { MainLayout } from '@/components/necessia/MainLayout';
+import { calculateContextStats } from '@/lib/graph-layout';
 
 interface SystemStatus {
   features: {
@@ -28,6 +29,10 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string>('');
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+  const [selectedGapProposal, setSelectedGapProposal] = useState<GapProposal | null>(null);
+  const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | undefined>(undefined);
+  const [startAnalysisFn, setStartAnalysisFn] = useState<((requestDelay: number) => Promise<void>) | null>(null);
+  const [cancelAnalysisFn, setCancelAnalysisFn] = useState<(() => void) | null>(null);
 
   // システムステータスを取得
   useEffect(() => {
@@ -51,7 +56,10 @@ export default function Home() {
   const handleSearch = async (query: string) => {
     setIsLoading(true);
     setError(null);
+    // ネットワークをnullに設定することで、進行中の解析がキャンセルされる
     setNetwork(null);
+    setSelectedGapProposal(null);
+    setAnalysisProgress(undefined);
     setProgress('Searching for paper...');
 
     try {
@@ -87,6 +95,45 @@ export default function Home() {
     console.log('Citation context analysis completed');
   };
 
+  const handleGapProposalChange = (proposal: GapProposal | null) => {
+    setSelectedGapProposal(proposal);
+  };
+
+  const handleAnalysisProgressChange = (progress: AnalysisProgress) => {
+    setAnalysisProgress(progress);
+  };
+
+  const handleStartAnalysisReady = (startAnalysis: (requestDelay: number) => Promise<void>) => {
+    setStartAnalysisFn(() => startAnalysis);
+  };
+
+  const handleCancelAnalysisReady = (cancelAnalysis: () => void) => {
+    setCancelAnalysisFn(() => cancelAnalysis);
+  };
+
+  const handleStartAnalysis = (requestDelay: number) => {
+    if (startAnalysisFn) {
+      startAnalysisFn(requestDelay);
+    }
+  };
+
+  // ネットワークが変更されたら、selectedGapProposalとanalysisProgressをリセット
+  useEffect(() => {
+    if (network) {
+      setSelectedGapProposal(null);
+      setAnalysisProgress(undefined);
+    } else {
+      // ネットワークがnullになった場合、解析関数もリセット
+      if (cancelAnalysisFn) {
+        cancelAnalysisFn();
+      }
+      setStartAnalysisFn(null);
+      setCancelAnalysisFn(null);
+      setSelectedGapProposal(null);
+      setAnalysisProgress(undefined);
+    }
+  }, [network?.seedPaper.id]);
+
   const handleResetError = () => {
     setError(null);
     setNetwork(null);
@@ -95,15 +142,39 @@ export default function Home() {
 
   const currentPhase = systemStatus?.phase || 1;
 
+  // 文脈タイプ別の統計を計算
+  const contextStats = useMemo(() => {
+    if (!network) return {};
+    return calculateContextStats(network.citations);
+  }, [network]);
+
   return (
-    <MainLayout showSidebars={!!network}>
+    <MainLayout 
+      showSidebars={!!network}
+      network={network}
+      analysisProgress={network ? analysisProgress : undefined}
+      contextStats={contextStats}
+      selectedGapProposal={selectedGapProposal}
+      onStartAnalysis={handleStartAnalysis}
+    >
         {network ? (
           // グラフビュー (タブに関係なく、検索結果があればこちらを表示)
           <div className="flex-1 relative h-full">
             {/* 戻るボタン */}
             <div className="absolute top-4 left-4 z-20">
               <button
-                onClick={() => setNetwork(null)}
+                onClick={() => {
+                  console.log('New Search button clicked, canceling analysis');
+                  // 解析を停止してからネットワークをnullに設定
+                  if (cancelAnalysisFn) {
+                    cancelAnalysisFn();
+                  }
+                  setStartAnalysisFn(null);
+                  setCancelAnalysisFn(null);
+                  setSelectedGapProposal(null);
+                  setAnalysisProgress(undefined);
+                  setNetwork(null);
+                }}
                 className="group flex items-center gap-2 px-4 py-2.5 bg-slate-900/90 backdrop-blur-md
                          hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition-all
                          border border-slate-700/50 shadow-lg"
@@ -129,6 +200,10 @@ export default function Home() {
             <CitationGraph 
               network={network} 
               onAnalysisComplete={handleAnalysisComplete}
+              onGapProposalChange={handleGapProposalChange}
+              onAnalysisProgressChange={handleAnalysisProgressChange}
+              onStartAnalysisReady={handleStartAnalysisReady}
+              onCancelAnalysisReady={handleCancelAnalysisReady}
             />
           </div>
         ) : error ? (

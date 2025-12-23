@@ -3,6 +3,7 @@ import { TopBar } from './TopBar';
 import { SidebarLeft } from './SidebarLeft';
 import { SidebarRight } from './SidebarRight';
 import { Paper } from '../../types/necessia';
+import { CitationNetwork, GapProposal, AnalysisProgress } from '../../types/paper';
 
 // Mock data matching the UI screenshot from necessia-page
 const MOCK_PAPER: Paper = {
@@ -29,11 +30,24 @@ const MOCK_PAPER: Paper = {
 
 interface MainLayoutProps {
   children: React.ReactNode;
-  showSidebars?: boolean; // Add this prop
+  showSidebars?: boolean;
+  network?: CitationNetwork | null;
+  analysisProgress?: AnalysisProgress;
+  contextStats?: Record<string, number>;
+  selectedGapProposal?: GapProposal | null;
+  onStartAnalysis?: (requestDelay: number) => void;
 }
 
-export const MainLayout: React.FC<MainLayoutProps> = ({ children, showSidebars = true }) => { // Default to true for existing uses
-  const [selectedPaper] = useState<Paper | null>(showSidebars ? MOCK_PAPER : null); // Conditionally set MOCK_PAPER
+export const MainLayout: React.FC<MainLayoutProps> = ({ 
+  children, 
+  showSidebars = true,
+  network,
+  analysisProgress,
+  contextStats,
+  selectedGapProposal,
+  onStartAnalysis,
+}) => {
+  const [selectedPaper] = useState<Paper | null>(showSidebars && !network ? MOCK_PAPER : null); // Conditionally set MOCK_PAPER
 
   const handleBack = () => {
     // In the context of research-gap-visualizer, this might reset the view
@@ -45,13 +59,21 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, showSidebars =
       <TopBar onBack={handleBack} />
       
       <div className="flex flex-1 relative overflow-hidden">
-        {showSidebars && <SidebarLeft />}
+        {showSidebars && (
+          <SidebarLeft 
+            network={network}
+            analysisProgress={analysisProgress}
+            contextStats={contextStats}
+            selectedGapProposal={selectedGapProposal}
+            onStartAnalysis={onStartAnalysis}
+          />
+        )}
         
         <main className="flex-1 relative flex flex-col overflow-hidden">
           {children}
         </main>
         
-        {selectedPaper && showSidebars && <SidebarRight paper={selectedPaper} />}
+        {selectedPaper && showSidebars && !network && <SidebarRight paper={selectedPaper} />}
       </div>
     </div>
   );

@@ -15,25 +15,6 @@ export function getEdgeColor(citation: Citation): string {
 }
 
 /**
- * 角度に基づいてHandleの位置を決定
- */
-function getHandlePosition(angle: number): string {
-  // -45度から45度: 右
-  // 45度から135度: 下
-  // 135度から-135度: 左
-  // -135度から-45度: 上
-  if (angle >= -Math.PI / 4 && angle < Math.PI / 4) {
-    return 'right';
-  } else if (angle >= Math.PI / 4 && angle < (3 * Math.PI) / 4) {
-    return 'bottom';
-  } else if (angle >= (3 * Math.PI) / 4 || angle < (-3 * Math.PI) / 4) {
-    return 'left';
-  } else {
-    return 'top';
-  }
-}
-
-/**
  * ネットワークからノードとエッジを計算（seedPaperを中心に円形配置）
  */
 export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edges: Edge[] } {
@@ -77,49 +58,25 @@ export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edge
     });
   }
 
-  // エッジを作成（直線、文脈タイプに基づく色分け）
+  // エッジを作成（直線、ノードの中心から中心へ接続）
   const edges: Edge[] = citations.map((citation) => {
     const color = getEdgeColor(citation);
     const hasContext = citation.contextType && citation.contextType !== 'background';
-
-    // seedPaperがsourceまたはtargetの場合、接続ポイントを計算
-    let sourceHandle: string | undefined;
-    let targetHandle: string | undefined;
-
-    if (citation.sourceId === seedPaper.id) {
-      // seedPaperから他のノードへの方向を計算
-      const targetNode = nodes.find((n) => n.id === citation.targetId);
-      if (targetNode) {
-        const dx = targetNode.position.x - 0; // seedPaperは(0, 0)
-        const dy = targetNode.position.y - 0;
-        const angle = Math.atan2(dy, dx);
-        sourceHandle = getHandlePosition(angle);
-      }
-    }
-
-    if (citation.targetId === seedPaper.id) {
-      // 他のノードからseedPaperへの方向を計算
-      const sourceNode = nodes.find((n) => n.id === citation.sourceId);
-      if (sourceNode) {
-        const dx = 0 - sourceNode.position.x; // seedPaperは(0, 0)
-        const dy = 0 - sourceNode.position.y;
-        const angle = Math.atan2(dy, dx);
-        targetHandle = getHandlePosition(angle);
-      }
-    }
 
     return {
       id: citation.id,
       source: citation.sourceId,
       target: citation.targetId,
-      sourceHandle: sourceHandle,
-      targetHandle: targetHandle,
-      type: 'default', // 直線エッジ
+      sourceHandle: 'center-source', // ノードの中心のハンドルを使用
+      targetHandle: 'center-target', // ノードの中心のハンドルを使用
+      type: 'straight', // 直線エッジ
       animated: hasContext,
+      selectable: false, // エッジを選択不可に
       style: {
         stroke: color,
         strokeWidth: hasContext ? 3 : 2,
         opacity: hasContext ? 0.8 : 0.5,
+        cursor: 'default', // カーソルをデフォルトに
       },
       markerEnd: {
         type: MarkerType.ArrowClosed,

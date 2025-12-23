@@ -5,12 +5,15 @@ import { CitationNetwork, AnalysisProgress, Citation } from '@/types/paper';
 
 interface UseCitationAnalysisOptions {
   onAnalysisComplete?: (updatedNetwork: CitationNetwork) => void;
+  autoStart?: boolean; // 自動開始のフラグ（デフォルト: false）
 }
 
 interface UseCitationAnalysisReturn {
   currentNetwork: CitationNetwork;
   analysisProgress: AnalysisProgress;
   isAnalyzing: boolean;
+  startAnalysis: (requestDelay?: number) => Promise<void>; // 手動で解析を開始する関数
+  cancelAnalysis: () => void; // 解析をキャンセルする関数
 }
 
 /**
@@ -20,6 +23,7 @@ export function useCitationAnalysis(
   network: CitationNetwork,
   options: UseCitationAnalysisOptions = {}
 ): UseCitationAnalysisReturn {
+  const { autoStart = false } = options;
   const [currentNetwork, setCurrentNetwork] = useState(network);
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress>({
     total: 0,
@@ -30,6 +34,7 @@ export function useCitationAnalysis(
   const analysisStarted = useRef<string | null>(null);
   const analysisTimer = useRef<NodeJS.Timeout | null>(null);
   const onAnalysisCompleteRef = useRef(options.onAnalysisComplete);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // コールバックの参照を更新
   useEffect(() => {
@@ -39,37 +44,83 @@ export function useCitationAnalysis(
   // networkプロップが変更されたときにcurrentNetworkを更新し、解析フラグをリセット
   useEffect(() => {
     const networkId = network.seedPaper.id;
-    if (networkId !== currentNetwork.seedPaper.id) {
-      console.log('Network prop changed, resetting analysis state');
-      // 既存のタイマーをクリーンアップ
-      if (analysisTimer.current) {
-        clearTimeout(analysisTimer.current);
-        analysisTimer.current = null;
+    const currentNetworkId = currentNetwork.seedPaper.id;
+    
+    // ネットワークIDが変更された場合、または空文字列（ダミーネットワーク）から変更された場合
+    // また、キャンセル用のID（__cancelled_で始まる）が検出された場合も処理
+    const isCancelledId = networkId.startsWith('__cancelled_');
+    const isCurrentCancelledId = currentNetworkId.startsWith('__cancelled_');
+    
+    // ネットワークIDが変更された場合
+    if (networkId !== currentNetworkId) {
+      // キャンセル用のIDが検出された場合（ネットワークがnullになった場合）
+      if (isCancelledId && !isCurrentCancelledId) {
+        console.log('Network was cancelled, aborting ongoing analysis');
+        
+        // 進行中の解析をキャンセル
+        if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+          console.log('Aborting ongoing analysis request (cancelled)');
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = null;
+        
+        // 既存のタイマーをクリーンアップ
+        if (analysisTimer.current) {
+          clearTimeout(analysisTimer.current);
+          analysisTimer.current = null;
+        }
+        
+        analysisStarted.current = null;
+        setAnalysisProgress({
+          total: 0,
+          analyzed: 0,
+          status: 'idle',
+        });
+        return;
       }
-      setCurrentNetwork(network);
-      analysisStarted.current = null;
-      setAnalysisProgress({
-        total: 0,
-        analyzed: 0,
-        status: 'idle',
-      });
+      
+      // 通常のネットワーク変更の場合
+      if (!isCancelledId && (networkId !== '' || currentNetworkId !== '')) {
+        console.log('Network prop changed, resetting analysis state and canceling ongoing requests', {
+          from: currentNetworkId,
+          to: networkId,
+        });
+        
+        // 進行中の解析をキャンセル
+        if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+          console.log('Aborting ongoing analysis request (network changed)');
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = null;
+        
+        // 既存のタイマーをクリーンアップ
+        if (analysisTimer.current) {
+          clearTimeout(analysisTimer.current);
+          analysisTimer.current = null;
+        }
+        
+        setCurrentNetwork(network);
+        analysisStarted.current = null;
+        setAnalysisProgress({
+          total: 0,
+          analyzed: 0,
+          status: 'idle',
+        });
+      }
     }
   }, [network.seedPaper.id, currentNetwork.seedPaper.id]);
 
-  // 引用文脈の解析を実行
-  useEffect(() => {
-    const networkId = network.seedPaper.id;
-    const citationsCount = network.citations.length;
+  // 解析を実行する関数
+  const analyzeContexts = useCallback(async (requestDelay: number = 50) => {
+      const networkId = network.seedPaper.id;
+      const citationsCount = network.citations.length;
 
-    // 引用がない場合はスキップ
-    if (citationsCount === 0) {
-      console.log('No citations to analyze, skipping');
-      return;
-    }
+      // 引用がない場合はスキップ
+      if (citationsCount === 0) {
+        console.log('No citations to analyze, skipping');
+        return;
+      }
 
-    console.log('useEffect triggered for network:', networkId, 'with', citationsCount, 'citations');
-
-    const analyzeContexts = async () => {
       // 既に解析済みのネットワークの場合はスキップ
       if (analysisStarted.current === networkId) {
         console.log('Analysis already completed for this network:', networkId);
@@ -79,9 +130,25 @@ export function useCitationAnalysis(
       analysisStarted.current = networkId;
       console.log('analyzeContexts function called for network:', networkId);
 
+      // 既存のAbortControllerがあればキャンセル
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
+      const analyzeContextsInternal = async () => {
+      // キャンセルチェック
+      if (abortControllerRef.current?.signal.aborted) {
+        console.log('Analysis was cancelled before starting');
+        analysisStarted.current = null;
+        return;
+      }
+      
       // APIステータスを確認
       try {
-        const statusResponse = await fetch('/api/papers/status');
+        const statusResponse = await fetch('/api/papers/status', {
+          signal: abortControllerRef.current?.signal,
+        });
         const status = await statusResponse.json();
 
         console.log('API status check:', status);
@@ -92,7 +159,20 @@ export function useCitationAnalysis(
           return;
         }
       } catch (error) {
+        // キャンセルエラーの場合は正常終了
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('Status check was cancelled');
+          analysisStarted.current = null;
+          return;
+        }
         console.warn('Could not check API status:', error);
+        analysisStarted.current = null;
+        return;
+      }
+      
+      // キャンセルチェック
+      if (abortControllerRef.current?.signal.aborted) {
+        console.log('Analysis was cancelled after status check');
         analysisStarted.current = null;
         return;
       }
@@ -125,24 +205,43 @@ export function useCitationAnalysis(
         };
       });
 
+      // キャンセルチェック
+      if (abortControllerRef.current?.signal.aborted) {
+        console.log('Analysis was cancelled before sending request');
+        analysisStarted.current = null;
+        return;
+      }
+      
       try {
         console.log('Sending analyze request to API...');
 
         // タイムアウト設定（2分）
-        const controller = new AbortController();
         const timeoutId = setTimeout(() => {
           console.log('Request timeout - aborting');
-          controller.abort();
+          abortControllerRef.current?.abort();
         }, 120000);
 
+        console.log(`Sending analyze request with requestDelay: ${requestDelay}ms`);
+        
         const response = await fetch('/api/papers/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ citations: citationsToAnalyze }),
-          signal: controller.signal,
+          body: JSON.stringify({ 
+            citations: citationsToAnalyze,
+            requestDelay: requestDelay,
+          }),
+          signal: abortControllerRef.current?.signal,
         });
 
         clearTimeout(timeoutId);
+        
+        // レスポンス受信後にキャンセルチェック
+        if (abortControllerRef.current?.signal.aborted) {
+          console.log('Analysis was cancelled after receiving response');
+          analysisStarted.current = null;
+          return;
+        }
+        
         console.log('Response received, status:', response.status);
 
         if (!response.ok) {
@@ -188,6 +287,18 @@ export function useCitationAnalysis(
           onAnalysisCompleteRef.current(updatedNetwork);
         }
       } catch (error) {
+        // AbortErrorの場合は正常なキャンセルとして扱う
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('Analysis was cancelled by user');
+          setAnalysisProgress({
+            total: 0,
+            analyzed: 0,
+            status: 'idle',
+          });
+          analysisStarted.current = null;
+          return;
+        }
+        
         console.error('Context analysis error:', error);
         setAnalysisProgress((prev) => ({
           ...prev,
@@ -197,33 +308,101 @@ export function useCitationAnalysis(
       }
     };
 
-    // 少し遅延させてから解析開始
-    console.log('Setting up analysis timer for network:', networkId);
+    await analyzeContextsInternal();
+  }, [network]);
+
+  // 自動開始が有効な場合のみ自動実行
+  useEffect(() => {
+    if (!autoStart) {
+      return;
+    }
+
+    const networkId = network.seedPaper.id;
+    const citationsCount = network.citations.length;
+
+    // 引用がない場合はスキップ
+    if (citationsCount === 0) {
+      console.log('No citations to analyze, skipping');
+      return;
+    }
+
+    console.log('Auto-starting analysis for network:', networkId);
 
     if (analysisTimer.current) {
-      console.log('Clearing existing timer before setting new one');
       clearTimeout(analysisTimer.current);
     }
 
     analysisTimer.current = setTimeout(() => {
-      console.log('Analysis timer fired for network:', networkId);
-      analyzeContexts();
+      analyzeContexts(50); // デフォルトのレート
       analysisTimer.current = null;
     }, 500);
 
     return () => {
-      console.log('useEffect cleanup for network:', networkId);
       if (analysisTimer.current) {
         clearTimeout(analysisTimer.current);
         analysisTimer.current = null;
       }
     };
-  }, [network.seedPaper.id, network]);
+  }, [autoStart, network.seedPaper.id, analyzeContexts]);
+
+  // 手動で解析を開始する関数
+  const startAnalysis = useCallback(async (requestDelay: number = 50) => {
+    await analyzeContexts(requestDelay);
+  }, [analyzeContexts]);
+
+  // 解析をキャンセルする関数
+  const cancelAnalysis = useCallback(() => {
+    console.log('cancelAnalysis called, aborting ongoing request');
+    
+    // 進行中の解析をキャンセル
+    if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = null;
+    
+    // タイマーをクリーンアップ
+    if (analysisTimer.current) {
+      clearTimeout(analysisTimer.current);
+      analysisTimer.current = null;
+    }
+    
+    // 状態をリセット
+    analysisStarted.current = null;
+    setAnalysisProgress({
+      total: 0,
+      analyzed: 0,
+      status: 'idle',
+    });
+  }, []);
+
+  // コンポーネントがアンマウントされる前に解析をキャンセル
+  useEffect(() => {
+    return () => {
+      console.log('useCitationAnalysis: Component unmounting, canceling analysis');
+      
+      // 進行中の解析をキャンセル
+      if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = null;
+      
+      // タイマーをクリーンアップ
+      if (analysisTimer.current) {
+        clearTimeout(analysisTimer.current);
+        analysisTimer.current = null;
+      }
+      
+      // 状態をリセット
+      analysisStarted.current = null;
+    };
+  }, []);
 
   return {
     currentNetwork,
     analysisProgress,
     isAnalyzing: analysisProgress.status === 'analyzing',
+    startAnalysis,
+    cancelAnalysis,
   };
 }
 

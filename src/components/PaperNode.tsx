@@ -63,7 +63,6 @@ function PaperNode({ data }: NodeProps) {
         {/* ホバー時のツールチップ */}
         <NodeTooltip paper={paper} />
       </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-slate-400" />
     </>
   );
 }
@@ -103,37 +102,23 @@ interface NodeHandlesProps {
 }
 
 function NodeHandles({ isSeed }: NodeHandlesProps) {
-  if (isSeed) {
-    return (
-      <>
-        {['left', 'right', 'top', 'bottom'].map((position) => (
-          <Handle
-            key={`target-${position}`}
-            id={position}
-            type="target"
-            position={Position[position.charAt(0).toUpperCase() + position.slice(1) as keyof typeof Position]}
-            className="!bg-slate-400"
-            style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
-          />
-        ))}
-        {['left', 'right', 'top', 'bottom'].map((position) => (
-          <Handle
-            key={`source-${position}`}
-            id={position}
-            type="source"
-            position={Position[position.charAt(0).toUpperCase() + position.slice(1) as keyof typeof Position]}
-            className="!bg-slate-400"
-            style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
-          />
-        ))}
-      </>
-    );
-  }
-
+  // すべてのノードの中心にハンドルを配置（エッジがノードの中心を指すように）
   return (
     <>
-      <Handle type="target" position={Position.Top} className="!bg-slate-400" />
-      <Handle type="source" position={Position.Bottom} className="!bg-slate-400" />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="center-target"
+        className="!bg-slate-400"
+        style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="center-source"
+        className="!bg-slate-400"
+        style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
+      />
     </>
   );
 }

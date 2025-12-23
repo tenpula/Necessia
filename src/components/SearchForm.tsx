@@ -102,7 +102,7 @@ interface ExampleQueriesProps {
 
 function ExampleQueries({ examples, onExampleClick, isLoading }: ExampleQueriesProps) {
   return (
-    <div className="mt-4 flex flex-col items-center gap-2">
+    <div className="mt-10 flex flex-col items-center gap-2">
       <span className="text-slate-400 text-sm mb-0">Try</span>
       <div className="flex flex-wrap gap-2 justify-center">
         {examples.map((example) => (
