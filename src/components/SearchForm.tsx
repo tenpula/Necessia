@@ -83,9 +83,10 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
         </div>
       </form>
 
-      <div className="mt-4 flex flex-wrap gap-2 justify-center">
-        <span className="text-slate-400 text-sm">Try:</span>
-        {exampleQueries.map((example) => (
+      <div className="mt-4 flex flex-col items-center gap-2">
+        <span className="text-slate-400 text-sm mb-0">Try</span>
+        <div className="flex flex-wrap gap-2 justify-center">
+          {exampleQueries.map((example) => (
           <button
             key={example.value}
             onClick={() => handleExampleClick(example.value)}
@@ -96,6 +97,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             {example.label}
           </button>
         ))}
+        </div>
       </div>
     </div>
   );

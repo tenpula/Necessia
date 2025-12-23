@@ -1,14 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #020617;
+  --background: #000014;
   --foreground: #f1f5f9;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 }
 
 * {
@@ -24,7 +19,6 @@ html, body, #__next {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -47,19 +41,19 @@ body {
   width: 8px;
   height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #1e293b;
-  border-radius: 4px;
+  background: rgba(17, 17, 24, 0.5);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: #282839;
   border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #3b3b54;
+}
+
+.bg-glow {
+      animation: pulse-slow 8s infinite ease-in-out;
 }
 
 /* アニメーション */

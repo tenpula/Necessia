@@ -5,6 +5,7 @@ import SearchForm from '@/components/SearchForm';
 import CitationGraph from '@/components/CitationGraph';
 import FeaturesView from '@/components/FeaturesView';
 import { CitationNetwork } from '@/types/paper';
+import { MainLayout } from '@/components/necessia/MainLayout';
 
 interface SystemStatus {
   features: {
@@ -95,82 +96,7 @@ export default function Home() {
   const currentPhase = systemStatus?.phase || 1;
 
   return (
-    <div className="h-screen bg-slate-950 flex flex-col overflow-hidden font-sans text-slate-200">
-      {/* ヘッダー */}
-      <header className="relative z-10 px-8 py-5 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600
-                            flex items-center justify-center shadow-lg shadow-cyan-500/20 ring-1 ring-white/10">
-                <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-              </svg>
-            </div>
-            <div>
-                <h1 className="text-xl font-bold text-white tracking-tight leading-none">
-                Research Gap Visualizer
-              </h1>
-                <p className="text-xs text-slate-400 mt-1 font-medium tracking-wide">COMPUTER SCIENCE EDITION</p>
-              </div>
-            </div>
-
-            {/* ナビゲーションタブ */}
-            {!network && (
-              <nav className="hidden md:flex bg-slate-900/50 p-1 rounded-xl border border-slate-800/50">
-                <button
-                  onClick={() => setActiveTab('search')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
-                    activeTab === 'search'
-                      ? 'bg-slate-800 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                  }`}
-                >
-                  Search
-                </button>
-                <button
-                  onClick={() => setActiveTab('features')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
-                    activeTab === 'features'
-                      ? 'bg-slate-800 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                  }`}
-                >
-                  Features
-                </button>
-              </nav>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            {systemStatus?.features.llmAnalysis && (
-              <span className="hidden sm:flex px-3 py-1 text-xs font-semibold bg-green-500/10 text-green-400 rounded-full border border-green-500/20 items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                AI Analysis Active
-              </span>
-            )}
-            <span className={`px-3 py-1 text-xs font-medium rounded-full border ${
-              currentPhase === 3 
-                ? 'bg-pink-500/10 text-pink-400 border-pink-500/20' 
-                : currentPhase === 2 
-                ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' 
-                : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-            }`}>
-              Phase {currentPhase}
-            </span>
-            {systemStatus?.features.gapFinding && (
-              <span className="hidden sm:flex px-3 py-1 text-xs font-semibold bg-pink-500/10 text-pink-400 rounded-full border border-pink-500/20 items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse"></span>
-                Gap Finding Active
-              </span>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* メインコンテンツ */}
-      <main className="flex-1 flex flex-col relative overflow-hidden">
+    <MainLayout showSidebars={!!network}>
         {network ? (
           // グラフビュー (タブに関係なく、検索結果があればこちらを表示)
           <div className="flex-1 relative h-full">
@@ -208,13 +134,6 @@ export default function Home() {
         ) : error ? (
           // エラー画面
           <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
-            {/* 背景装飾 */}
-            <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-20 pointer-events-none"></div>
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-red-500/10 rounded-full blur-[100px] mix-blend-screen animate-pulse-slow" />
-              <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-orange-500/10 rounded-full blur-[100px] mix-blend-screen animate-pulse-slow" style={{ animationDelay: '1s' }} />
-            </div>
-
             <div className="relative z-10 w-full max-w-2xl mx-auto text-center">
               <div className="bg-slate-900/90 backdrop-blur-xl border border-red-500/30 rounded-3xl p-12 shadow-2xl shadow-red-900/20 ring-1 ring-red-500/10">
                 {/* エラーアイコン */}
@@ -293,19 +212,6 @@ export default function Home() {
             {activeTab === 'search' ? (
               // Search Tab Content
               <div className="flex flex-col items-center justify-center min-h-full px-6 py-12 relative">
-                {/* 背景装飾 */}
-                <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-20 pointer-events-none"></div>
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                  <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] mix-blend-screen animate-pulse-slow" />
-                  <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[100px] mix-blend-screen animate-pulse-slow" style={{ animationDelay: '1s' }} />
-                  {currentPhase >= 2 && (
-                    <div className="absolute top-1/3 left-2/3 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] mix-blend-screen" />
-                  )}
-                  {currentPhase === 3 && (
-                    <div className="absolute bottom-1/3 right-1/3 w-[350px] h-[350px] bg-pink-500/10 rounded-full blur-[100px] mix-blend-screen" />
-                  )}
-                </div>
-
                 <div className="relative z-10 w-full max-w-4xl mx-auto text-center">
                   <div className="mb-12 space-y-6">
                     <h2 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 tracking-tight leading-tight drop-shadow-sm">
@@ -317,7 +223,7 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 shadow-2xl shadow-black/50 ring-1 ring-white/5 mx-auto max-w-3xl">
+                  <div className="mt-10">
                     <SearchForm onSearch={handleSearch} isLoading={isLoading} />
                   </div>
 
@@ -339,24 +245,6 @@ export default function Home() {
             )}
           </div>
         )}
-      </main>
-
-      {/* フッター */}
-      {!network && !error && (
-        <footer className="px-8 py-6 border-t border-slate-800/50 bg-slate-950/50 backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-            <div className="flex items-center gap-4">
-               <span>Powered by <span className="text-slate-400 font-medium">OpenAlex API</span></span>
-               <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
-               <span>LLM: <span className="text-slate-400 font-medium">{systemStatus?.config.llmModel || 'Not Configured'}</span></span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-cyan-500/50"></span>
-              <span>System Status: <span className="text-green-400">Operational</span></span>
-            </div>
-          </div>
-        </footer>
-      )}
-    </div>
+    </MainLayout>
   );
 }

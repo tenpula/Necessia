@@ -208,7 +208,6 @@ export default function CitationGraph({ network, onAnalysisComplete }: CitationG
       setAnalysisProgress({
         total: 0,
         analyzed: 0,
-        cached: 0,
         status: 'idle',
       });
     }
