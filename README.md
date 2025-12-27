@@ -105,24 +105,6 @@ Necessiaは、以下のロジックに基づいて研究の空白（Gap）を自
 
 Gap提案は、グラフビュー内のパネルから確認できます。
 
-##  ロードマップ
-
-### Phase 1: MVP 
-- [x] arXiv URL/DOI/タイトル検索
-- [x] OpenAlex API連携
-- [x] グラフ可視化
-
-### Phase 2: Context & Analysis 
-- [x] LLM導入（引用文脈の分類）
-- [x] 文脈タイプ別のエッジ色分け
-- [x] エッジクリックで詳細表示
-
-### Phase 3: Gap Finding & Analysis 
-- [x] ベクトル検索による「Gap」提案機能
-- [x] Co-citation分析による見落とし検出
-- [x] Gap提案パネルの実装
-- [ ] PDFアップロード機能（将来の拡張）
-
 ##  ライセンス
 
 Apache License 2.0
