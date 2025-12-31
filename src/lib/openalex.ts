@@ -1,4 +1,9 @@
-// OpenAlex API クライアント
+/**
+ * OpenAlex API クライアント
+ * 
+ * OpenAlex APIを使用して論文データ、引用情報などを取得するためのモジュールです。
+ * レート制限の管理、各種IDの抽出、データ形式の変換などの機能を提供します。
+ */
 
 import {
   Paper,
@@ -10,7 +15,12 @@ import {
 
 const OPENALEX_BASE_URL = 'https://api.openalex.org';
 
-// レート制限管理クラス
+/**
+ * レート制限管理クラス
+ * 
+ * OpenAlex APIの利用制限（1秒あたり10リクエスト、1日あたり10万リクエスト）を遵守し、
+ * 必要に応じて待機時間を挿入します。また、429エラー時の自動リトライも行います。
+ */
 class RateLimiter {
   private requestsPerSecond: number = 10; // 1秒あたりの最大リクエスト数
   private requestsPerDay: number = 100000; // 1日あたりの最大リクエスト数
@@ -134,7 +144,13 @@ const getMailtoParam = (): string => {
   return `mailto=${encodeURIComponent(email)}`;
 };
 
-// arXiv URLからarXiv IDを抽出
+/**
+ * arXiv URLやID文字列から正規化されたarXiv IDを抽出します。
+ * 様々な形式（URL, pdf URL, "arXiv:"プレフィックス付きなど）に対応しています。
+ * 
+ * @param input ユーザー入力文字列
+ * @returns 正規化されたarXiv ID (例: "1706.03762") または null
+ */
 export function extractArxivId(input: string): string | null {
   // arXiv URL patterns:
   // https://arxiv.org/abs/2301.00234
@@ -171,7 +187,12 @@ export function extractArxivId(input: string): string | null {
   return null;
 }
 
-// DOIを抽出
+/**
+ * DOI文字列やURLから正規化されたDOIを抽出します。
+ * 
+ * @param input ユーザー入力文字列
+ * @returns 正規化されたDOI (例: "10.1234/example") または null
+ */
 export function extractDoi(input: string): string | null {
   // DOI patterns:
   // https://doi.org/10.1234/example
@@ -440,7 +461,18 @@ export async function getCitations(openAlexId: string, limit: number = 50): Prom
   }
 }
 
-// 引用ネットワークを構築
+/**
+ * 引用ネットワークを構築します。
+ * 
+ * 指定されたSeed論文を中心として、
+ * 1. その論文が引用している論文 (References)
+ * 2. その論文を引用している論文 (Citations)
+ * を取得し、ネットワークデータ構造を作成します。
+ * 
+ * @param seedPaperIdOrQuery 検索クエリ（ID, URL, タイトルなど）
+ * @param options オプション（引用・被引用の取得有無、取得数制限など）
+ * @returns 構築された引用ネットワーク
+ */
 export async function buildCitationNetwork(
   seedPaperIdOrQuery: string,
   options: {

@@ -1,11 +1,18 @@
-// LLM による引用文脈分類
+/**
+ * LLM (Large Language Model) を使用した引用文脈分析モジュール
+ * 
+ * Google Gemini APIを使用して、論文間の引用関係（Context）を分類します。
+ * 単なる「引用」だけでなく、それが「手法の利用」なのか「批判」なのか「比較」なのかを識別します。
+ */
 import { CitationContextType, Paper } from '@/types/paper';
 
-// 分類結果の型
+/**
+ * 分類結果の型定義
+ */
 interface ClassificationResult {
-  contextType: CitationContextType;
-  confidence: number;
-  explanation?: string;
+  contextType: CitationContextType; // 分類されたタイプ
+  confidence: number;               // 信頼度 (0.0 - 1.0)
+  explanation?: string;             // 分類理由の説明
 }
 
 // 安定版のモデルIDを指定
@@ -18,7 +25,16 @@ export function getLLMModelName(): string {
   return GEMINI_MODEL_NAME;
 }
 
-// プロンプトテンプレート
+/**
+ * 引用文脈分類のためのプロンプトテンプレート
+ * 
+ * LLMに対して、2つの論文（引用元と引用先）のタイトルとアブストラクトを提示し、
+ * その関係性を以下の4つのカテゴリのいずれかに分類するように指示します。
+ * 1. methodology: 手法の利用
+ * 2. critique: 批判的検討
+ * 3. comparison: 比較
+ * 4. background: 背景・関連研究
+ */
 const CLASSIFICATION_PROMPT = `You are a citation context classifier for computer science research papers.
 
 Analyze the relationship between two papers and classify the citation context into one of these categories:
@@ -78,7 +94,15 @@ async function logAvailableModels(apiKey: string) {
   }
 }
 
-// メイン分類関数
+/**
+ * 2つの論文間の引用文脈を分類します。
+ * Gemini APIを呼び出し、結果をパースして返します。
+ * リトライロジックやエラーハンドリングも含まれています。
+ * 
+ * @param sourcePaper 引用元の論文
+ * @param targetPaper 引用先の論文
+ * @returns 分類結果（タイプ、信頼度、説明）
+ */
 export async function classifyCitationContext(
   sourcePaper: Paper,
   targetPaper: Paper
@@ -214,7 +238,14 @@ export function isLLMConfigured(): boolean {
   return !!process.env.GEMINI_API_KEY;
 }
 
-// バッチ分類（レート制限考慮）
+/**
+ * 複数の論文ペアに対して一括で引用文脈分類を行います。
+ * APIのレート制限（Rate Limit）を考慮して、リクエスト間に待機時間を設けて順次処理します。
+ * 
+ * @param pairs 分類対象の論文ペアの配列
+ * @param onProgress 進捗状況を通知するコールバック関数
+ * @returns 分類結果のMap（キーは "sourceId->targetId" 形式）
+ */
 export async function classifyCitationContextsBatch(
   pairs: { source: Paper; target: Paper }[],
   onProgress?: (completed: number, total: number) => void

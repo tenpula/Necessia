@@ -1,11 +1,22 @@
-// ベクトル類似度計算（Gemini Embedding API使用）
+/**
+ * ベクトル埋め込み（Embedding）と類似度計算モジュール
+ * 
+ * Gemini Embedding APIを使用して、論文のテキスト（タイトル+アブストラクト）をベクトル化し、
+ * 論文間の意味的な類似度（Semantic Similarity）を計算します。
+ */
 import { Paper } from '@/types/paper';
 
 const GEMINI_EMBEDDING_MODEL = 'models/text-embedding-004';
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
 
-// 論文のテキストを取得（タイトル + アブストラクト）
+/**
+ * 論文からベクトル化対象のテキストを抽出します。
+ * タイトルとアブストラクトを結合して使用します。
+ * 
+ * @param paper 対象の論文
+ * @returns 結合されたテキスト
+ */
 function getPaperText(paper: Paper): string {
   const parts: string[] = [];
   if (paper.title) {
@@ -17,7 +28,13 @@ function getPaperText(paper: Paper): string {
   return parts.join('\n\n');
 }
 
-// 単一のテキストのembeddingを取得
+/**
+ * 単一のテキストに対してEmbeddingベクトルを取得します。
+ * APIエラー時のリトライやレート制限のハンドリングを含みます。
+ * 
+ * @param text ベクトル化するテキスト
+ * @returns ベクトル（数値の配列）
+ */
 export async function getEmbedding(text: string): Promise<number[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -81,7 +98,18 @@ export async function getEmbedding(text: string): Promise<number[]> {
   throw new Error('Failed to get embedding');
 }
 
-// 複数の論文のembeddingを一括取得（最適化版）
+/**
+ * 複数の論文のEmbeddingベクトルを一括で取得します。
+ * 
+ * 効率的な処理のために以下の工夫を行っています：
+ * - バッチ処理による並行リクエスト
+ * - APIレート制限を考慮した待機時間の挿入
+ * - エラー発生時の個別スキップ（全体の処理を止めない）
+ * 
+ * @param papers 論文の配列
+ * @param onProgress 進捗通知コールバック
+ * @returns 論文IDをキーとするベクトルのMap
+ */
 export async function getPaperEmbeddings(
   papers: Paper[],
   onProgress?: (completed: number, total: number) => void
@@ -136,7 +164,14 @@ export async function getPaperEmbeddings(
   return embeddings;
 }
 
-// コサイン類似度を計算
+/**
+ * 2つのベクトル間のコサイン類似度を計算します。
+ * 結果は -1.0 から 1.0 の範囲になります（通常は正の値）。
+ * 
+ * @param vecA ベクトルA
+ * @param vecB ベクトルB
+ * @returns コサイン類似度
+ */
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {
   if (vecA.length !== vecB.length) {
     throw new Error('Vectors must have the same length');

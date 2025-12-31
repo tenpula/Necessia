@@ -1,10 +1,19 @@
-// 引用グラフのレイアウト計算ユーティリティ
+/**
+ * 引用グラフのレイアウト計算ユーティリティ
+ * 
+ * ノード（論文）の配置座標とエッジ（引用関係）のスタイルを計算します。
+ * React Flowなどのグラフライブラリで使用される形式（Node, Edge）を出力します。
+ */
 
 import { Node, Edge, MarkerType } from '@xyflow/react';
 import { CitationNetwork, Paper, Citation, CONTEXT_TYPE_INFO } from '@/types/paper';
 
 /**
- * 引用文脈に基づいてエッジの色を決定
+ * 引用文脈に基づいてエッジの色を決定します。
+ * - background: 一般的な関連研究
+ * - methodology: 手法の利用
+ * - comparison: 比較対象
+ * - critique: 批判的検討
  */
 export function getEdgeColor(citation: Citation): string {
   if (citation.contextType && citation.contextType !== 'background') {
@@ -15,7 +24,15 @@ export function getEdgeColor(citation: Citation): string {
 }
 
 /**
- * ネットワークからノードとエッジを計算（seedPaperを中心に円形配置）
+ * ネットワークからノードとエッジを計算し、レイアウトを決定します。
+ * 
+ * 配置ロジック:
+ * - Seed論文（中心となる論文）を原点 (0, 0) に配置します。
+ * - その他の論文をSeed論文を取り囲むように円形に配置します。
+ * - 論文数に応じて円の半径を動的に調整します。
+ * 
+ * @param network 引用ネットワークデータ
+ * @returns ノードとエッジの配列
  */
 export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edges: Edge[] } {
   const { seedPaper, papers, citations } = network;

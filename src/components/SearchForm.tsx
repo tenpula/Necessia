@@ -8,15 +8,28 @@ interface SearchFormProps {
   isLoading: boolean;
 }
 
+// サンプルクエリの定義
+// ユーザーが試しやすいように、代表的な入力形式の例を提供します
 const EXAMPLE_QUERIES = [
   { label: 'arXiv URL', value: 'https://arxiv.org/abs/1706.03762' },
   { label: 'arXiv ID', value: '2010.11929' },
   { label: 'DOI', value: '10.48550/arXiv.1706.03762' },
 ] as const;
 
+/**
+ * 検索フォームコンポーネント
+ * 
+ * ユーザーが論文を検索するための入力フォームを提供します。
+ * arXiv ID, DOI, タイトルなどの入力を受け付け、検索を実行します。
+ * また、サンプルクエリの提示も行います。
+ */
 export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
   const [query, setQuery] = useState('');
 
+  /**
+   * フォーム送信時のハンドラ
+   * 入力が空でない場合のみ検索を実行します。
+   */
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
@@ -27,10 +40,17 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
     [query, onSearch]
   );
 
+  /**
+   * 入力変更時のハンドラ
+   */
   const handleQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
   }, []);
 
+  /**
+   * サンプルクエリクリック時のハンドラ
+   * クリックされた値を入力フォームにセットします。
+   */
   const handleExampleClick = useCallback((value: string) => {
     setQuery(value);
   }, []);

@@ -1,8 +1,16 @@
-// Gap検出ロジック（Co-citation + ベクトル類似度）- 改善版
+/**
+ * 研究ギャップ（Research Gap）検出ロジック
+ * 
+ * 論文間の関係性を分析し、未探索の研究領域や比較検討の価値がある組み合わせを提案します。
+ * Co-citation（共通引用）分析とベクトル類似度（Semantic Similarity）を組み合わせて判断します。
+ */
 import { Paper, CitationNetwork, GapProposal } from '@/types/paper';
 import { getPaperEmbeddings, cosineSimilarity } from './embeddings';
 
-// インデックス化されたネットワーク構造
+/**
+ * インデックス化されたネットワーク構造
+ * 検索効率向上のためのデータ構造です。
+ */
 interface IndexedNetwork {
   // 論文ID → その論文が引用している論文IDのセット
   citationsBySource: Map<string, Set<string>>;
@@ -53,7 +61,19 @@ function buildIndexedNetwork(network: CitationNetwork): IndexedNetwork {
   };
 }
 
-// Co-citation（共通引用）を検出（改善版：Jaccard係数も計算）
+/**
+ * 2つの論文間のCo-citation（共通引用）関係を分析します。
+ * 
+ * - 共通して引用している論文の特定
+ * - Jaccard係数による集合の類似度計算
+ * - 引用重複率の計算
+ * を行います。
+ * 
+ * @param paperA 論文A
+ * @param paperB 論文B
+ * @param indexed インデックス化されたネットワーク
+ * @returns Co-citation分析結果
+ */
 function findCoCitations(
   paperA: Paper,
   paperB: Paper,
@@ -203,7 +223,17 @@ function calculateAdaptiveThresholds(
   };
 }
 
-// 改善された信頼度スコアの計算
+/**
+ * ギャップ提案の信頼度スコアを計算します。
+ * 
+ * 複数の要因を重み付けして統合スコアを算出します：
+ * 1. Semantic Similarity (40%): 内容的な類似性
+ * 2. Co-citation Score (30%): 引用関係の類似性（Jaccard係数など）
+ * 3. Overlap Ratio (15%): 引用の重複度
+ * 4. Paper Importance (15%): 論文自体の重要度（引用数ベース）
+ * 
+ * また、特定の条件下でのボーナス/ペナルティも適用します。
+ */
 function calculateConfidenceScore(
   similarityScore: number,
   coCitationData: ReturnType<typeof findCoCitations>,
@@ -321,7 +351,17 @@ Respond with ONLY the explanation text, no JSON or markdown formatting.`;
   }
 }
 
-// Gap提案を検出（改善版）
+/**
+ * 研究ギャップの提案候補を検出します。
+ * 
+ * ネットワーク内のすべての論文ペアに対して分析を行い、
+ * - 直接的な引用関係がない
+ * - 内容的に類似している（Semantic Similarityが高い）
+ * - 共通の引用がある（Co-citationがある）
+ * 
+ * 論文ペアを特定し、それらが「なぜ比較すべきか」の理由とともに提案します。
+ * 必要に応じてLLMを使用して自然言語での理由付けを生成します。
+ */
 export async function findGapProposals(
   network: CitationNetwork,
   options: {
