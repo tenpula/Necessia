@@ -21,7 +21,7 @@
 - **Styling:** Tailwind CSS 4
 - **Graph Visualization:** React Flow (@xyflow/react)
 - **Data Source:** OpenAlex API
-- **LLM:** Gemini 2.0 Flash / GPT-4o-mini（引用文脈の分類）
+- **LLM:** Gemini 2.5 Flash-Lite（引用文脈の分類）
 - **Embeddings:** Google Generative AI Embeddings API（Gap検出用）
 - **Rate Limiting:** 自動レート制限管理（1秒あたり10リクエスト、1日10万リクエスト）
 

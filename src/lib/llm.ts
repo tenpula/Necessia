@@ -16,7 +16,7 @@ interface ClassificationResult {
 }
 
 // 安定版のモデルIDを指定
-const GEMINI_MODEL_NAME = 'gemini-2.0-flash';
+const GEMINI_MODEL_NAME = 'gemini-2.5-flash-lite';
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 2000;
 
