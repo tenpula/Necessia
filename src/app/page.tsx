@@ -60,10 +60,10 @@ export default function Home() {
     setNetwork(null);
     setSelectedGapProposal(null);
     setAnalysisProgress(undefined);
-    setProgress('Searching for paper...');
+    setProgress('論文を検索中...');
 
     try {
-      setProgress('Building citation network...');
+      setProgress('引用ネットワークを構築中...');
       const response = await fetch(
         `/api/papers/network?q=${encodeURIComponent(query)}&limit=30`
       );
@@ -182,7 +182,7 @@ export default function Home() {
                 <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
-                <span className="font-medium">New Search</span>
+                <span className="font-medium">新しい検索</span>
               </button>
             </div>
 
@@ -190,7 +190,7 @@ export default function Home() {
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-full max-w-xl px-4 pointer-events-none">
               <div className="px-6 py-4 bg-slate-900/90 backdrop-blur-md rounded-2xl
                             border border-cyan-500/30 shadow-xl shadow-cyan-900/20 text-center pointer-events-auto">
-                <p className="text-[10px] uppercase tracking-wider text-cyan-400 font-bold mb-1">Current Seed Paper</p>
+                <p className="text-[10px] uppercase tracking-wider text-cyan-400 font-bold mb-1">現在のSeed論文</p>
                 <h3 className="text-white font-bold text-sm md:text-base leading-tight line-clamp-2">
                   {network.seedPaper.title}
                 </h3>
@@ -290,11 +290,11 @@ export default function Home() {
                 <div className="relative z-10 w-full max-w-4xl mx-auto text-center">
                   <div className="mb-12 space-y-6">
                     <h2 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 tracking-tight leading-tight drop-shadow-sm">
-                      Visualize the Gap in <br/>
-                      <span className="text-cyan-400">Research Logic</span>
+                      研究の空白を <br/>
+                      <span className="text-cyan-400">論理的に可視化する</span>
                     </h2>
                     <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                      Discover missing links and hidden connections in Computer Science research using AI-powered citation analysis.
+                      AIによる引用分析を使用して、情報工学研究におけるミッシングリンクと隠れたつながりを発見します。
                     </p>
                   </div>
 

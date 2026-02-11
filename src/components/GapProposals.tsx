@@ -140,7 +140,7 @@ function ToggleButton({ isPanelOpen, onClick }: ToggleButtonProps) {
                    text-purple-400 rounded-l-3xl shadow-lg border-l border-t border-b border-purple-500/30
                    transition-all duration-500 hover:border-purple-500/50
                    flex items-center justify-center group"
-        title="Research Gaps"
+        title="研究ギャップの提案"
       >
         <svg
           className="w-7 h-7"
@@ -244,7 +244,7 @@ function LoadingState({ onCancel }: LoadingStateProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <LoadingSpinner size="md" className="text-purple-500" />
-          <span className="text-slate-300">Analyzing research gaps...</span>
+          <span className="text-slate-300">研究ギャップを分析中...</span>
         </div>
         <CloseIcon onClick={onCancel} />
       </div>
@@ -271,10 +271,10 @@ function ErrorState({ error, onRetry, onClose }: ErrorStateProps) {
           />
         </svg>
         <div className="flex-1">
-          <p className="text-red-300 font-medium mb-1">Error</p>
+          <p className="text-red-300 font-medium mb-1">エラー</p>
           <p className="text-red-400 text-sm">{error}</p>
           <button onClick={onRetry} className="mt-2 text-red-300 hover:text-red-200 text-sm underline">
-            Try again
+            再試行
           </button>
         </div>
         <CloseIcon onClick={onClose} className="text-red-400 hover:text-red-300" />
@@ -292,11 +292,11 @@ function EmptyState({ onClose }: EmptyStateProps) {
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-purple-400 font-semibold">Research Gaps</h3>
+        <h3 className="text-purple-400 font-semibold">研究ギャップの提案</h3>
         <CloseIcon onClick={onClose} />
       </div>
       <p className="text-slate-400 text-sm">
-        No significant gaps found. All papers in the network appear to be well-connected.
+        重要なギャップは見つかりませんでした。ネットワーク内の論文は十分に接続されているようです。
       </p>
     </div>
   );
@@ -319,7 +319,7 @@ function ProposalsList({ proposals, isCollapsed, onToggleCollapsed, onProposalCl
       >
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-          <h3 className="text-purple-400 font-semibold">Research Gaps ({proposals.length})</h3>
+          <h3 className="text-purple-400 font-semibold">研究ギャップの提案 ({proposals.length})</h3>
         </div>
       </button>
 
@@ -356,13 +356,13 @@ function ProposalItem({ proposal, onProposalClick }: ProposalItemProps) {
     >
       <div className="mb-2">
         <div className="flex items-start gap-2 mb-1">
-          <span className="text-xs text-purple-400 font-medium">Paper A:</span>
+          <span className="text-xs text-purple-400 font-medium">論文A:</span>
           <span className="text-xs text-slate-300 flex-1">
             {formatPaperTitle(proposal.paperA.title, 60)}
           </span>
         </div>
         <div className="flex items-start gap-2">
-          <span className="text-xs text-pink-400 font-medium">Paper B:</span>
+          <span className="text-xs text-pink-400 font-medium">論文B:</span>
           <span className="text-xs text-slate-300 flex-1">
             {formatPaperTitle(proposal.paperB.title, 60)}
           </span>
@@ -371,11 +371,11 @@ function ProposalItem({ proposal, onProposalClick }: ProposalItemProps) {
 
       <div className="flex items-center gap-3 mb-2 text-xs">
         <div className="flex items-center gap-1">
-          <span className="text-slate-400">Similarity:</span>
+          <span className="text-slate-400">類似度:</span>
           <span className="text-cyan-400 font-medium">{(proposal.similarityScore * 100).toFixed(0)}%</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-slate-400">Co-citations:</span>
+          <span className="text-slate-400">共引用数:</span>
           <span className="text-purple-400 font-medium">{proposal.coCitationCount}</span>
         </div>
       </div>
@@ -384,7 +384,7 @@ function ProposalItem({ proposal, onProposalClick }: ProposalItemProps) {
 
       {proposal.commonCitations.length > 0 && (
         <div className="mt-2 pt-2 border-t border-slate-700/30">
-          <p className="text-xs text-slate-500 mb-1">Common citations:</p>
+          <p className="text-xs text-slate-500 mb-1">共通の引用文献:</p>
           <div className="flex flex-wrap gap-1">
             {proposal.commonCitations.slice(0, 3).map((paper) => (
               <span
@@ -395,7 +395,7 @@ function ProposalItem({ proposal, onProposalClick }: ProposalItemProps) {
               </span>
             ))}
             {proposal.commonCitations.length > 3 && (
-              <span className="text-xs text-slate-500">+{proposal.commonCitations.length - 3} more</span>
+              <span className="text-xs text-slate-500">他 +{proposal.commonCitations.length - 3} 件</span>
             )}
           </div>
         </div>
@@ -412,7 +412,7 @@ interface CloseIconProps {
 
 function CloseIcon({ onClick, className = 'text-slate-400 hover:text-slate-300' }: CloseIconProps) {
   return (
-    <button onClick={onClick} className={className} title="Close">
+    <button onClick={onClick} className={className} title="閉じる">
       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
         <path
           fillRule="evenodd"

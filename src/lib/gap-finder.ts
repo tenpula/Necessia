@@ -290,7 +290,7 @@ async function generateGapReasoning(
   useLLM: boolean = true
 ): Promise<string> {
   // 簡易版の説明文（LLMを使わない）
-  const simpleReasoning = `Both papers have high semantic similarity (${(similarityScore * 100).toFixed(1)}%)${coCitationCount > 0 ? ` and cite ${coCitationCount} common paper(s)` : ''}. They may benefit from comparative analysis.`;
+  const simpleReasoning = `両方の論文は高い意味的類似度（${(similarityScore * 100).toFixed(1)}%）を持っており${coCitationCount > 0 ? `、${coCitationCount}本の共通文献を引用しています` : 'ます'}。比較分析を行う価値があるでしょう。`;
 
   if (!useLLM) {
     return simpleReasoning;
@@ -314,7 +314,7 @@ These papers:
 - Both cite ${coCitationCount} common paper(s): ${commonCitations.slice(0, 3).map(p => p.title).join(', ')}
 - Do NOT directly cite each other
 
-Generate a brief, professional explanation (2-3 sentences) in English explaining why these papers should be compared or why there might be a research gap. Focus on logical reasoning based on their shared citations and similarity.
+Generate a brief, professional explanation (2-3 sentences) in Japanese explaining why these papers should be compared or why there might be a research gap. Focus on logical reasoning based on their shared citations and similarity.
 
 Respond with ONLY the explanation text, no JSON or markdown formatting.`;
 

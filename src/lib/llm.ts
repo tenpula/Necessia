@@ -64,7 +64,7 @@ Respond in JSON format ONLY:
 {
   "contextType": "methodology" | "critique" | "comparison" | "background",
   "confidence": 0.0-1.0,
-  "explanation": "brief explanation"
+  "explanation": "brief explanation in Japanese (2-3 sentences)"
 }`;
 
 // デバッグ用：利用可能なモデル一覧を表示

@@ -63,7 +63,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             type="text"
             value={query}
             onChange={handleQueryChange}
-            placeholder="Enter arXiv URL, DOI, or paper title..."
+            placeholder="arXivのURL、DOI、または論文タイトルを入力..."
             className="w-full px-6 py-4 text-lg bg-slate-800/50 border border-slate-600/50 rounded-2xl
                      text-slate-100 placeholder-slate-400
                      focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50
@@ -104,10 +104,10 @@ function SubmitButton({ isLoading, isDisabled }: SubmitButtonProps) {
       {isLoading ? (
         <span className="flex items-center gap-2">
           <LoadingSpinner size="md" />
-          Analyzing...
+          解析中...
         </span>
       ) : (
-        'Visualize'
+        '可視化'
       )}
     </button>
   );
@@ -123,7 +123,7 @@ interface ExampleQueriesProps {
 function ExampleQueries({ examples, onExampleClick, isLoading }: ExampleQueriesProps) {
   return (
     <div className="mt-10 flex flex-col items-center gap-2">
-      <span className="text-slate-400 text-sm mb-0">Try</span>
+      <span className="text-slate-400 text-sm mb-0">試してみる</span>
       <div className="flex flex-wrap gap-2 justify-center">
         {examples.map((example) => (
           <button
