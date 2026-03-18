@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * 研究ギャップ提案リスト
+ * 発見された課題（ギャップ）の一覧をカード形式で表示する部品です。
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';

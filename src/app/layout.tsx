@@ -1,5 +1,12 @@
+/*
+ * 【ファイル概要】
+ * アプリ全体のレイアウト
+ * どの画面を開いても共通する一番の大枠（フォントや背景色など）を設定する場所です。
+ */
+
 import type { Metadata } from "next";
 import "./globals.css";
+import Providers from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "Necessia - Research Gap Visualizer",
@@ -27,7 +34,9 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display overflow-hidden h-screen flex flex-col">
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

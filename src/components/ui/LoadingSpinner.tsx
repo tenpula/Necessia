@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * ローディング表示
+ * データの読み込み中に「くるくる」と回るインジケーターの部品です。
+ */
+
 'use client';
 
 interface LoadingSpinnerProps {

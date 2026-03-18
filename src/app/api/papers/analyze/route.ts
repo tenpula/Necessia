@@ -1,7 +1,22 @@
+/*
+ * 【ファイル概要】
+ * 論文の引用文脈分析API
+ * AIを使って「なぜその論文を引用したのか」を分析要求する通信口です。
+ */
+
 // 引用文脈解析 API Route
+// =============================================================================
+// ■ 認証 & 利用制限の仕組み（このAPIに追加された新機能）:
+//   1. セッションチェック: Auth.jsで現在のユーザーを確認
+//   2. 利用回数チェック: 本日の分析回数が3回未満か確認
+//   3. カウントインクリメント: 分析実行時にUsageLogに記録
+//   4. 既存の分析ロジック: 上記チェック後に実行（変更なし）
+// =============================================================================
 import { NextRequest, NextResponse } from 'next/server';
 import { classifyCitationContext, isLLMConfigured, getLLMModelName } from '@/lib/llm';
 import { Paper, CitationContextType } from '@/types/paper';
+import { auth } from '@/lib/auth';
+import { checkAndIncrementUsage } from '@/lib/usage';
 
 interface AnalyzeRequest {
   citations: {
@@ -32,6 +47,47 @@ interface AnalyzeResponse {
 export async function POST(request: NextRequest) {
   try {
     console.log('[Analyze API] POST request received');
+
+    // =========================================================================
+    // 認証チェック
+    // =========================================================================
+    // Auth.js の auth() でサーバーサイドからセッションを取得。
+    // セッションがない = 未ログインなので、401 Unauthorized を返す。
+    const session = await auth();
+    if (!session?.user?.id) {
+      console.log('[Analyze API] Unauthenticated request rejected');
+      return NextResponse.json(
+        { error: 'ログインが必要です。右上のボタンからGoogleアカウントでログインしてください。' },
+        { status: 401 }
+      );
+    }
+
+    // =========================================================================
+    // 利用回数チェック & インクリメント
+    // =========================================================================
+    // checkAndIncrementUsage はトランザクション内で以下を実行:
+    //   1. 本日の analysis レコード数をカウント
+    //   2. 3回未満なら新しいレコードを挿入（カウント+1）
+    //   3. 3回以上なら拒否
+    // トランザクションにより、同時リクエストでの制限超過を防止。
+    const usage = await checkAndIncrementUsage(session.user.id, 'analysis');
+    if (!usage.allowed) {
+      console.log(`[Analyze API] Usage limit reached for user ${session.user.id}`);
+      return NextResponse.json(
+        { 
+          error: '無料体験枠を使い切りました。継続して利用したい場合は、オープンソース版をご自身の環境で構築してください。',
+          usageLimitReached: true,
+          remaining: 0,
+        },
+        { status: 429 }
+      );
+    }
+
+    console.log(`[Analyze API] Usage allowed for user ${session.user.id}, remaining: ${usage.remaining}`);
+
+    // =========================================================================
+    // 既存の分析ロジック（以下は変更なし）
+    // =========================================================================
     
     // リクエストがキャンセルされたかチェック
     if (request.signal.aborted) {

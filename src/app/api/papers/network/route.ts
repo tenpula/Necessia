@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * 論文ネットワーク取得API
+ * 論文の引用関係（繋がり）のデータを取り寄せる通信口です。
+ */
+
 // 引用ネットワーク構築 API Route
 import { NextRequest, NextResponse } from 'next/server';
 import { buildCitationNetwork } from '@/lib/openalex';

@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * 論文検索API
+ * 入力されたキーワードで世界中の論文データベース（OpenAlex）を検索します。
+ */
+
 // 論文検索 API Route
 import { NextRequest, NextResponse } from 'next/server';
 import {

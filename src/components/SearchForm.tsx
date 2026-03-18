@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * 検索フォーム
+ * ユーザーがキーワードを入力して論文を探すための入力欄とボタンです。
+ */
+
 'use client';
 
 import { useState, useCallback } from 'react';

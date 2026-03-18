@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * ネットワーク図の描画
+ * 論文同士のつながりを、React Flowを使って視覚的なグラフとして画面に描画する部品です。
+ */
+
 'use client';
 
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';

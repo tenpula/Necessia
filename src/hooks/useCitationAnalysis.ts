@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * 引用分析の裏方ロジック
+ * 論文データを受け取り、裏でAIに「文脈の分析」をリクエストして結果を画面に伝える処理です。
+ */
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -245,9 +251,18 @@ export function useCitationAnalysis(
         console.log('Response received, status:', response.status);
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('API error response:', errorText);
-          throw new Error(`Analysis request failed: ${response.status}`);
+          // レスポンスボディからエラーメッセージを取得
+          let errorMessage = `Analysis request failed: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            if (errorData.error) {
+              errorMessage = errorData.error;
+            }
+          } catch {
+            // JSONパースに失敗した場合はデフォルトメッセージを使用
+          }
+          console.error('API error response:', errorMessage);
+          throw new Error(errorMessage);
         }
 
         const result = await response.json();

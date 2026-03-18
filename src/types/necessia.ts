@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * Necessia独自データの型
+ * アプリの中で使うデータ（状態など）が「どんな形をしているべきか」のルールブックです。
+ */
+
 export interface Paper {
   id: string;
   title: string;

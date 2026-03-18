@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * 研究ギャップ詳細パネル
+ * AIが見つけた「この研究にはこんな空白地帯がある」という詳細を表示します。
+ */
+
 'use client';
 
 import { GapProposal, Paper } from '@/types/paper';

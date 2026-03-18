@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * 機能紹介画面
+ * アプリを開いた直後（検索前）に表示される、使い方や機能の説明画面です。
+ */
+
 import React from 'react';
 
 export default function FeaturesView() {

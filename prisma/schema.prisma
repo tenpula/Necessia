@@ -1,0 +1,123 @@
+// =============================================================================
+// Prisma Schema for Necessia
+// =============================================================================
+// このファイルはデータベースのスキーマ（テーブル構造）を定義します。
+// 
+// ■ Auth.js (NextAuth.js v5) が必要とする標準テーブル:
+//   - User: ユーザー情報（名前、メール、画像等）
+//   - Account: OAuth プロバイダーとの紐付け（Google等）
+//   - Session: ログインセッションの管理
+//   - VerificationToken: メール認証用トークン（今回は使わないが標準で必要）
+//
+// ■ 独自テーブル:
+//   - UsageLog: ユーザーごとの利用回数を記録（1日3回制限）
+//
+// Prisma の仕組み:
+//   1. このファイルでスキーマを定義
+//   2. `npx prisma migrate dev` でDBにテーブルを作成（マイグレーション）
+//   3. `npx prisma generate` でTypeScriptクライアントを自動生成
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // Neon PostgreSQL はサーバーレスなので、接続プーリングを使用
+  // DATABASE_URL の末尾に ?sslmode=require&pgbouncer=true を含めること
+}
+
+// =============================================================================
+// Auth.js 標準テーブル（@auth/prisma-adapter が要求するスキーマ）
+// =============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  usageLogs     UsageLog[]  // ユーザーの利用ログ
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// OAuth プロバイダー（Google等）のアカウント情報
+// Googleログイン時に自動的にレコードが作成される
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+// ログインセッション（ユーザーがログイン中であることを管理）
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// メール認証用トークン（Google OAuthでは使わないが、Auth.jsの標準スキーマとして必要）
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// =============================================================================
+// 独自テーブル: 利用回数ログ
+// =============================================================================
+
+// ユーザーの各操作を記録するログテーブル
+// 
+// ■ 設計思想:
+//   カウンター方式（usageCount: 3）ではなく、ログ方式（1操作1レコード）を採用。
+//   理由:
+//   1. いつ・何をしたかの監査証跡（Audit Trail）が残る
+//   2. アクション種別ごとの制限が将来的に容易に追加可能
+//   3. 日別・週別・月別の集計がSQLで簡単にできる
+//
+// ■ 利用回数の確認方法:
+//   SELECT COUNT(*) FROM UsageLog
+//   WHERE userId = ? AND action = 'analysis' AND createdAt >= 今日の00:00(UTC)
+//
+// ■ インデックス:
+//   userId + createdAt の複合インデックスで、日別カウントクエリを高速化
+model UsageLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // "analysis" 等のアクション種別
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}

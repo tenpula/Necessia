@@ -1,3 +1,11 @@
+/*
+ * 【ファイル概要】
+ * メイン画面の枠組み
+ * 上部のバーや左右のサイドバー、中央の表示エリアなどをどう配置するかを決めています。
+ */
+
+'use client';
+
 import React, { useState } from 'react';
 import { TopBar } from './TopBar';
 import { SidebarLeft } from './SidebarLeft';
@@ -36,6 +44,8 @@ interface MainLayoutProps {
   contextStats?: Record<string, number>;
   selectedGapProposal?: GapProposal | null;
   onStartAnalysis?: (requestDelay: number) => void;
+  remainingUsage?: number;
+  usageLimit?: number;
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ 
@@ -46,6 +56,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   contextStats,
   selectedGapProposal,
   onStartAnalysis,
+  remainingUsage,
+  usageLimit,
 }) => {
   const [selectedPaper] = useState<Paper | null>(showSidebars && !network ? MOCK_PAPER : null); // Conditionally set MOCK_PAPER
 
@@ -56,7 +68,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display overflow-hidden">
-      <TopBar onBack={handleBack} />
+      <TopBar onBack={handleBack} remainingUsage={remainingUsage} usageLimit={usageLimit} />
       
       <div className="flex flex-1 relative overflow-hidden">
         {showSidebars && (

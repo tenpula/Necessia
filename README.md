@@ -2,17 +2,6 @@
 
 情報工学（Computer Science）分野の研究者向け、論文間の引用関係を可視化し、研究の空白（Gap）を発見するWebサービスです。
 
-##  現在のフェーズ
-
-**Phase 3: Gap Finding & Analysis（研究空白の発見）** ✅
-
--  arXiv URL、DOI、論文タイトルでの検索
--  OpenAlex APIから引用リスト取得
--  インタラクティブなグラフ可視化
--  LLM導入（引用文脈の分類：支持/批判/比較/背景）
--  ベクトル検索による「Gap」提案機能（Co-citation + 類似度分析）
--  日本語対応（UIおよびAI分析結果）
-
 ##  技術スタック
 
 - **Frontend:** Next.js 16 (App Router) + React 19 + TypeScript
@@ -62,6 +51,13 @@ GEMINI_API_KEY=your-gemini-api-key
 # または OpenAI API
 # https://platform.openai.com/api-keys で取得
 OPENAI_API_KEY=your-openai-api-key
+
+# 利用回数制限
+# 公式のオンラインデモ（ https://research-gap-visualizer.onrender.com/ ）を利用する場合は、
+# お試しとして「1アカウントにつき3回まで」の利用制限が設けられています。
+# OSSとしてご自身で環境を構築して利用する場合、この制限は関係ありません（0または未設定で無制限となります）。
+USAGE_LIMIT=3
+
 ```
 
 > **注意:**
@@ -84,7 +80,7 @@ OPENAI_API_KEY=your-openai-api-key
 - **DOI:** `10.48550/arXiv.1706.03762` または `https://doi.org/10.48550/arXiv.1706.03762`
 - **タイトル:** `Attention Is All You Need`
 
-##  引用文脈の種類（Phase 2）
+##  引用文脈の種類
 
 | 種類 | 色 | 説明 |
 |------|-----|------|
@@ -93,7 +89,7 @@ OPENAI_API_KEY=your-openai-api-key
 | 🟣 Comparison | 紫 | 比較実験の対象 |
 | ⚪ Background | グレー | 一般的な関連研究 |
 
-##  Gap検出機能（Phase 3）
+##  Gap検出機能
 
 Necessiaは、以下のロジックに基づいて研究の空白（Gap）を自動検出します：
 

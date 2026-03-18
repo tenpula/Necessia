@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * 右サイドバー
+ * 論文をクリックした時に右側からスライドして現れる、詳細情報エリアです。
+ */
+
 import React from 'react';
 import { Paper } from '../../types/necessia';
 

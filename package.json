@@ -9,10 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
     "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^6.19.2",
     "@xyflow/react": "^12.10.0",
     "next": "16.0.10",
+    "next-auth": "^5.0.0-beta.30",
     "openai": "^6.14.0",
+    "prisma": "^6.19.2",
     "react": "19.2.1",
     "react-dom": "19.2.1"
   },

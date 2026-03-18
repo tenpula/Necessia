@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * APIステータス確認API
+ * AIなどの外部サービスが正しく設定されているかを確認します。
+ */
+
 // システムステータス API Route
 import { NextResponse } from 'next/server';
 import { isLLMConfigured, getLLMModelName } from '@/lib/llm';

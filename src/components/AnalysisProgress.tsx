@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * プログレスバー機能
+ * AIによる分析が全件中どこまで進んでいるかを表示する、進捗バーの部品です。
+ */
+
 'use client';
 
 import { AnalysisProgress as AnalysisProgressType } from '@/types/paper';

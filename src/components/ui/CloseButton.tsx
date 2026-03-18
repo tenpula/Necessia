@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * 閉じるボタン
+ * パネルやダイアログの右上にある「×」ボタンの共通部品です。
+ */
+
 'use client';
 
 interface CloseButtonProps {

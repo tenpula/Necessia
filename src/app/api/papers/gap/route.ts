@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * 研究ギャップ発見API
+ * 「まだ解決されていない課題」をAIに提案してもらうための通信口です。
+ */
+
 // Gap提案 API Route
 import { NextRequest, NextResponse } from 'next/server';
 import { findGapProposals } from '@/lib/gap-finder';

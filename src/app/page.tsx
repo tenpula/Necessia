@@ -1,9 +1,17 @@
+/*
+ * 【ファイル概要】
+ * アプリのトップページ
+ * 最初に表示される画面で、検索や分析、ネットワーク表示などの全体を管理しています。
+ */
+
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import SearchForm from '@/components/SearchForm';
 import CitationGraph from '@/components/CitationGraph';
 import FeaturesView from '@/components/FeaturesView';
+import UsageLimitBanner from '@/components/UsageLimitBanner';
 import { CitationNetwork, GapProposal, AnalysisProgress } from '@/types/paper';
 import { MainLayout } from '@/components/necessia/MainLayout';
 import { calculateContextStats } from '@/lib/graph-layout';
@@ -33,6 +41,32 @@ export default function Home() {
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | undefined>(undefined);
   const [startAnalysisFn, setStartAnalysisFn] = useState<((requestDelay: number) => Promise<void>) | null>(null);
   const [cancelAnalysisFn, setCancelAnalysisFn] = useState<(() => void) | null>(null);
+
+  // 認証 & 利用制限関連の状態
+  const { status: authStatus } = useSession();
+  const [remainingUsage, setRemainingUsage] = useState<number | undefined>(undefined);
+  const [usageLimit, setUsageLimit] = useState<number>(3);
+  const [showUsageLimitBanner, setShowUsageLimitBanner] = useState(false);
+
+  // 利用回数を取得する関数
+  const fetchUsage = useCallback(async () => {
+    if (authStatus !== 'authenticated') return;
+    try {
+      const res = await fetch('/api/usage/check');
+      if (res.ok) {
+        const data = await res.json();
+        setRemainingUsage(data.remaining);
+        setUsageLimit(data.limit);
+      }
+    } catch (err) {
+      console.error('Could not fetch usage:', err);
+    }
+  }, [authStatus]);
+
+  // ログイン状態が変わったら利用回数を取得
+  useEffect(() => {
+    fetchUsage();
+  }, [fetchUsage]);
 
   // システムステータスを取得
   useEffect(() => {
@@ -84,9 +118,16 @@ export default function Home() {
       setNetwork(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+
+      // APIが429 (利用制限) を返した場合、バナーを表示
+      if (err instanceof Error && err.message.includes('無料枠')) {
+        setShowUsageLimitBanner(true);
+      }
     } finally {
       setIsLoading(false);
       setProgress('');
+      // 分析後に利用回数を再取得
+      fetchUsage();
     }
   };
 
@@ -156,7 +197,13 @@ export default function Home() {
       contextStats={contextStats}
       selectedGapProposal={selectedGapProposal}
       onStartAnalysis={handleStartAnalysis}
+      remainingUsage={remainingUsage}
+      usageLimit={usageLimit}
     >
+        {/* 利用制限バナー */}
+        {showUsageLimitBanner && (
+          <UsageLimitBanner onClose={() => setShowUsageLimitBanner(false)} />
+        )}
         {network ? (
           // グラフビュー (タブに関係なく、検索結果があればこちらを表示)
           <div className="flex-1 relative h-full">

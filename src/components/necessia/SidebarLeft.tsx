@@ -1,3 +1,9 @@
+/*
+ * 【ファイル概要】
+ * 左サイドバー
+ * 画面の左側に固定され、分析の進捗や見つかったギャップのリスト等を表示します。
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import { CitationNetwork, GapProposal, AnalysisProgress, CONTEXT_TYPE_INFO } from '../../types/paper';
 import AnalysisProgressComponent from '../AnalysisProgress';
