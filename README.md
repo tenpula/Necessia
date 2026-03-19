@@ -40,17 +40,13 @@ npm run build
 OPENALEX_EMAIL=your-email@example.com
 ```
 
-### Phase 2/3: LLM設定（必須）
+### LLM設定（必須）
 
 ```env
-# Gemini API（推奨: 無料枠あり、コスト効率良好）
+# Gemini API（必須）
 # https://makersuite.google.com/app/apikey で取得
-# Phase 2（引用文脈分類）とPhase 3（Gap検出）の両方で使用
+# 引用文脈分類とGap検出の両方で使用
 GEMINI_API_KEY=your-gemini-api-key
-
-# または OpenAI API
-# https://platform.openai.com/api-keys で取得
-OPENAI_API_KEY=your-openai-api-key
 
 # 利用回数制限
 # 公式のオンラインデモ（ https://research-gap-visualizer.onrender.com/ ）を利用する場合は、
@@ -61,8 +57,8 @@ USAGE_LIMIT=3
 ```
 
 > **注意:**
-> - LLM APIキーが設定されていない場合、Phase 1モードで動作します（引用文脈分類とGap検出は無効）
-> - Phase 3のGap検出機能には、LLM APIキー（Gemini推奨）が必要です
+> - LLM APIキーが設定されていない場合、引用文脈分類とGap検出は無効になります
+> - Gap検出機能には、LLM APIキーが必要です
 > - ユーザーは各自のAPIキーを設定して使用します
 
 ##  使い方
@@ -70,8 +66,8 @@ USAGE_LIMIT=3
 1. 検索フォームにarXiv URL、DOI、または論文タイトルを入力
 2. 「可視化」ボタンをクリック
 3. 引用ネットワークがグラフで表示される
-4. **Phase 2:** エッジをクリックすると引用文脈の詳細が表示される
-5. **Phase 3:** Gap提案パネルを開いて、見落とされている可能性のある論文ペアを確認
+4. エッジをクリックすると引用文脈の詳細が表示される
+5. Gap提案パネルを開いて、見落とされている可能性のある論文ペアを確認
 
 ### 対応入力形式
 
