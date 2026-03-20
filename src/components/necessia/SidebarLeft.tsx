@@ -7,6 +7,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CitationNetwork, GapProposal, AnalysisProgress, CONTEXT_TYPE_INFO } from '../../types/paper';
 import AnalysisProgressComponent from '../AnalysisProgress';
+import GapProposals from '../GapProposals';
 
 interface SidebarLeftProps {
   network?: CitationNetwork | null;
@@ -14,6 +15,7 @@ interface SidebarLeftProps {
   contextStats?: Record<string, number>;
   selectedGapProposal?: GapProposal | null;
   onStartAnalysis?: (requestDelay: number) => void;
+  onGapProposalChange?: (proposal: GapProposal | null) => void;
 }
 
 export const SidebarLeft: React.FC<SidebarLeftProps> = ({
@@ -22,11 +24,13 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
   contextStats,
   selectedGapProposal,
   onStartAnalysis,
+  onGapProposalChange,
 }) => {
   const hasNetwork = !!network;
   const [requestDelay, setRequestDelay] = useState(50); // デフォルト50ms
   const [sliderValue, setSliderValue] = useState(1); // スライダーの値（0-4のインデックス）
   const [showTooltip, setShowTooltip] = useState(false);
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
   const sliderRef = useRef<HTMLDivElement>(null);
 
   // リクエストレートのプリセット値（ミリ秒）
@@ -101,11 +105,20 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
   const estimatedTimeSecondsRemainder = estimatedTimeSeconds % 60;
 
   return (
-    <aside className="w-80 h-full flex flex-col bg-white dark:bg-neutral-900/95 backdrop-blur-xl border-r border-neutral-200 dark:border-neutral-800/50 z-10 transition-all duration-300 absolute md:relative -translate-x-full md:translate-x-0">
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pt-20 space-y-8" id="left-sidebar">
+    <div className={`relative h-full flex-none overflow-visible transition-[width] duration-300 ${isPanelOpen ? 'w-80' : 'w-0'}`}>
+      <aside
+        className={`absolute right-0 top-0 h-full w-80 flex flex-col bg-white dark:bg-neutral-900/95 backdrop-blur-xl border-l border-neutral-200 dark:border-neutral-800/50 z-10 transition-transform duration-300 ${isPanelOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pt-6 space-y-6" id="left-sidebar">
         {hasNetwork ? (
           <>
+            {/* 現在のシード論文 */}
+            <div className="px-4 py-3 bg-neutral-900/95 rounded-2xl border border-neutral-700 shadow-md shadow-black/30">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold mb-1">現在のSeed論文</p>
+              <h3 className="text-neutral-100 font-bold text-sm leading-tight line-clamp-2">{network.seedPaper.title}</h3>
+            </div>
+
             {/* Network Statistics */}
             <div className="flex flex-col gap-1">
               <h1 className="text-neutral-900 dark:text-white text-lg font-medium leading-normal">ネットワーク統計</h1>
@@ -311,6 +324,22 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
                 </button>
               </div>
             )}
+            {/* 研究ギャップ提案（右サイドバーに統合） */}
+            <div className="flex flex-col gap-2">
+              <GapProposals
+                network={network}
+                variant="embedded"
+                onProposalClick={(proposal) => onGapProposalChange?.(proposal)}
+              />
+              {selectedGapProposal && (
+                <button
+                  onClick={() => onGapProposalChange?.(null)}
+                  className="self-end text-xs text-neutral-400 hover:text-neutral-200 transition-colors"
+                >
+                  提案選択を解除
+                </button>
+              )}
+            </div>
 
             <div className="h-px bg-neutral-200 dark:bg-[#282839] w-full"></div>
           </>
@@ -373,9 +402,9 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
             </div>
           </>
         )}
-      </div>
+        </div>
 
-      <div className="p-4 bg-neutral-50 dark:bg-[#1c1c27] border-t border-neutral-200 dark:border-neutral-800">
+        <div className="p-4 bg-neutral-50 dark:bg-[#1c1c27] border-t border-neutral-200 dark:border-neutral-800">
         <p className="text-xs text-neutral-500 dark:text-[#9d9db9] mb-3 uppercase tracking-wider font-bold">凡例（Legend）</p>
         <div className="flex flex-col gap-2">
           {hasNetwork ? (
@@ -415,6 +444,29 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
                 </div>
               </div>
 
+              {/* 引用分類の凡例 */}
+              <div className="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-800">
+                <h4 className="text-xs text-neutral-500 dark:text-[#9d9db9] uppercase tracking-wider mb-2">引用分類（エッジ/軌道）</h4>
+                <div className="space-y-2">
+                  {(['methodology', 'critique', 'comparison', 'background'] as const).map((type) => {
+                    const info = CONTEXT_TYPE_INFO[type];
+                    return (
+                      <div key={type} className="flex items-start gap-2">
+                        <div className="mt-1 w-4 h-0.5" style={{ backgroundColor: info.color }} />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium" style={{ color: info.color }}>
+                            {info.emoji} {info.label}
+                          </p>
+                          <p className="text-[11px] text-neutral-500 dark:text-[#9d9db9] leading-snug">
+                            {info.description}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Gap Proposal ハイライト */}
               {selectedGapProposal && (
                 <div className="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-800">
@@ -447,7 +499,25 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
             </>
           )}
         </div>
-      </div>
-    </aside>
+        </div>
+      </aside>
+
+      <button
+        type="button"
+        onClick={() => setIsPanelOpen((prev) => !prev)}
+        className="absolute left-[-32px] top-6 z-20 inline-flex items-center justify-center w-8 h-12 rounded-l-xl rounded-r-none bg-neutral-900/95 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-colors shadow-[0_10px_24px_rgba(0,0,0,0.35)]"
+        aria-label={isPanelOpen ? 'サイドバーを閉じる' : 'サイドバーを開く'}
+      >
+        <svg
+          className={`w-4 h-4 transition-transform ${isPanelOpen ? '' : 'rotate-180'}`}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+      </button>
+    </div>
   );
 };

@@ -14,7 +14,7 @@ export default function StarryBackground() {
 
     // 星のデータを保持する配列
     const stars: { x: number; y: number; radius: number; opacity: number }[] = [];
-    const numStars = 300; // 星の数を調整
+    const numStars = 150; // 視認性を保ったまま約50%減らす
 
     const resizeAndDraw = () => {
       // 親コンテナ（またはウィンドウ）に合わせる

@@ -12,7 +12,7 @@
  */
 
 import { Node, Edge, MarkerType } from '@xyflow/react';
-import { CitationNetwork, Paper, Citation, CONTEXT_TYPE_INFO, CitationContextType } from '@/types/paper';
+import { CitationNetwork, Paper, Citation, CONTEXT_TYPE_INFO } from '@/types/paper';
 
 /**
  * 引用文脈に基づいてエッジの色を決定します。
@@ -82,8 +82,22 @@ export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edge
   orderedContextTypes.forEach(t => classifiedGroups.set(t, []));
   const unclassifiedPapers: Paper[] = [];
 
+  // 論文ごとの代表Citationを決める。
+  // まず seed 論文と直接つながる Citation を優先し、なければ任意の関連 Citation を採用する。
+  const citationByPaperId = new Map<string, Citation>();
+
+  citations.forEach((citation) => {
+    if (citation.sourceId === seedPaper.id && citation.targetId !== seedPaper.id) {
+      citationByPaperId.set(citation.targetId, citation);
+    } else if (citation.targetId === seedPaper.id && citation.sourceId !== seedPaper.id) {
+      citationByPaperId.set(citation.sourceId, citation);
+    }
+  });
+
   otherPapers.forEach(paper => {
-    const cit = citations.find(c => c.sourceId === paper.id || c.targetId === paper.id);
+    const cit = citationByPaperId.get(paper.id)
+      ?? citations.find(c => c.sourceId === paper.id || c.targetId === paper.id);
+
     if (cit && cit.contextType && orderedContextTypes.includes(cit.contextType)) {
       classifiedGroups.get(cit.contextType)!.push(paper);
     } else {
@@ -112,11 +126,17 @@ export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edge
     nodes.push({
       id: `orbit-${ctg}`,
       type: 'orbit',
-      position: { x: -r, y: -r }, // 中心(0,0)に揃えるため -rずらす
+      position: { x: 0, y: 0 }, // nodeOriginを中心に合わせるため原点配置
       data: { radius: r, category: ctg },
       draggable: false,
       selectable: false,
-      zIndex: -1,
+      focusable: false,
+      zIndex: 0,
+      style: {
+        pointerEvents: 'none',
+        background: 'transparent',
+        border: 'none',
+      },
     });
 
     // 論文を軌道上に均等配置
@@ -133,6 +153,7 @@ export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edge
           y: Math.sin(theta) * r
         },
         data: { paper, isSeed: false, orbitRadius: r }, // 軌道半径を記録しておく（ドラッグ制約用）
+        zIndex: 5,
       });
     });
 
@@ -163,22 +184,24 @@ export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edge
           y: Math.sin(theta) * r
         },
         data: { paper, isSeed: false }, // 未分類は軌道に乗らない
+        zIndex: 5,
       });
     });
   }
 
-  // 3. エッジを作成（分類済み論文にはエッジを引かず、未分類のみうっすら引く）
-  // ※円の軌道（レール）自体が視覚的なエッジの役割を果たすため、ノード同士を直接直線で繋ぐのをやめます。
+  // 3. エッジを作成（分類済み・未分類の両方を描画）
+  // 分類済みの引用は色分けして表示し、未分類は薄く表示
   const edges: Edge[] = [];
   
   citations.forEach((citation) => {
-    // コンテキストが設定されている（分類済み）場合はエッジを描画しない
-    if (citation.contextType && orderedContextTypes.includes(citation.contextType)) {
-      return; 
+    // シード論文から各ノードへ直接つながるエッジは表示しない
+    if (citation.sourceId === seedPaper.id || citation.targetId === seedPaper.id) {
+      return;
     }
 
-    // 未分類の論文のみ、うっすらとエッジを引く
     const color = getEdgeColor(citation);
+    const isClassified = citation.contextType && orderedContextTypes.includes(citation.contextType);
+    
     edges.push({
       id: citation.id,
       source: citation.sourceId,
@@ -190,8 +213,8 @@ export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edge
       selectable: false,
       style: {
         stroke: color,
-        strokeWidth: 1,
-        opacity: 0.15, // とてもうすく
+        strokeWidth: isClassified ? 2 : 1,
+        opacity: isClassified ? 0.6 : 0.15, // 分類済みは目立つように、未分類はうっすら
         cursor: 'default',
       },
       markerEnd: {

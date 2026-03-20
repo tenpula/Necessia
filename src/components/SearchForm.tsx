@@ -128,14 +128,14 @@ interface ExampleQueriesProps {
 function ExampleQueries({ examples, onExampleClick, isLoading }: ExampleQueriesProps) {
   return (
     <div className="mt-10 flex flex-col items-center gap-2">
-      <span className="text-slate-400 text-sm mb-0">試してみる</span>
+      <span className="text-neutral-500 text-sm mb-0">試してみる</span>
       <div className="flex flex-wrap gap-2 justify-center">
         {examples.map((example) => (
           <button
             key={example.value}
             onClick={() => onExampleClick(example.value)}
-            className="text-xs px-3 py-1 bg-neutral-800 hover:bg-neutral-700 
-                     text-neutral-400 hover:text-neutral-300 rounded-md transition-colors duration-150 border border-neutral-700/50"
+            className="text-xs px-4 py-1.5 bg-neutral-800 hover:bg-neutral-700
+                     text-neutral-400 hover:text-neutral-200 rounded-full transition-colors duration-150 border border-neutral-700"
             disabled={isLoading}
           >
             {example.label}

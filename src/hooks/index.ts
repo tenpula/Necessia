@@ -5,4 +5,5 @@
  */
 
 export { useCitationAnalysis } from './useCitationAnalysis';
+export { useHomePageController } from './useHomePageController';
 

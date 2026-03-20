@@ -265,41 +265,120 @@ export function useCitationAnalysis(
           throw new Error(errorMessage);
         }
 
-        const result = await response.json();
-        console.log('Analysis result:', result.stats);
+        // SSE ストリーム処理
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('Response body is not readable');
+        }
 
-        // 結果を反映
-        const updatedCitations: Citation[] = citations.map((citation) => {
-          const analysisResult = result.results.find(
-            (r: { sourceId: string; targetId: string }) =>
-              r.sourceId === citation.sourceId && r.targetId === citation.targetId
-          );
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let analysisResults: Citation[] = [];
+        let totalCitations = 0;
+        let completionStats: any = null;
 
-          if (analysisResult) {
-            return {
-              ...citation,
-              contextType: analysisResult.contextType,
-              confidence: analysisResult.confidence,
-              analyzedAt: new Date().toISOString(),
-            };
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          // キャンセルチェック
+          if (abortControllerRef.current?.signal.aborted) {
+            reader.cancel();
+            console.log('Analysis was cancelled during stream reading');
+            throw new Error('AbortError');
           }
-          return citation;
-        });
 
-        const updatedNetwork: CitationNetwork = {
-          ...network,
-          citations: updatedCitations,
-        };
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          
+          // 最後の行が不完全な場合はバッファに残す
+          buffer = lines.pop() || '';
 
-        setCurrentNetwork(updatedNetwork);
-        setAnalysisProgress({
-          total: result.stats.total,
-          analyzed: result.stats.analyzed,
-          status: 'completed',
-        });
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const eventData = JSON.parse(line.slice(6));
+                console.log('SSE Event received:', eventData.type);
 
-        if (onAnalysisCompleteRef.current) {
-          onAnalysisCompleteRef.current(updatedNetwork);
+                if (eventData.type === 'progress') {
+                  // 進捗イベント
+                  setAnalysisProgress({
+                    total: eventData.total,
+                    analyzed: eventData.analyzed,
+                    status: 'analyzing',
+                    currentPaper: eventData.currentPaper,
+                  });
+                } else if (eventData.type === 'complete') {
+                  // 完了イベント
+                  console.log('Analysis complete:', eventData.stats);
+                  
+                  completionStats = eventData.stats;
+                  analysisResults = eventData.results;
+                  totalCitations = eventData.stats.total;
+
+                  // 結果を反映
+                  const updatedCitations: Citation[] = citations.map((citation) => {
+                    const analysisResult = analysisResults.find(
+                      (r: { sourceId: string; targetId: string }) =>
+                        r.sourceId === citation.sourceId && r.targetId === citation.targetId
+                    );
+
+                    if (analysisResult) {
+                      return {
+                        ...citation,
+                        contextType: analysisResult.contextType,
+                        confidence: analysisResult.confidence,
+                        analyzedAt: new Date().toISOString(),
+                      };
+                    }
+                    return citation;
+                  });
+
+                  const updatedNetwork: CitationNetwork = {
+                    ...network,
+                    citations: updatedCitations,
+                  };
+
+                  setCurrentNetwork(updatedNetwork);
+                  setAnalysisProgress({
+                    total: totalCitations,
+                    analyzed: completionStats.analyzed,
+                    status: 'completed',
+                  });
+
+                  if (onAnalysisCompleteRef.current) {
+                    onAnalysisCompleteRef.current(updatedNetwork);
+                  }
+                } else if (eventData.type === 'error') {
+                  // エラーイベント
+                  console.error('Analysis error:', eventData.error);
+                  throw new Error(eventData.error || eventData.message);
+                }
+              } catch (parseError) {
+                if (parseError instanceof SyntaxError) {
+                  console.warn('Failed to parse SSE event:', line, parseError);
+                } else {
+                  throw parseError;
+                }
+              }
+            }
+          }
+        }
+
+        // ストリーム完読後の最終チェック
+        if (buffer.startsWith('data: ')) {
+          try {
+            const eventData = JSON.parse(buffer.slice(6));
+            if (eventData.type === 'complete') {
+              console.log('Final analysis complete event processed');
+            } else if (eventData.type === 'error') {
+              throw new Error(eventData.error || eventData.message);
+            }
+          } catch (parseError) {
+            if (!(parseError instanceof SyntaxError)) {
+              throw parseError;
+            }
+          }
         }
       } catch (error) {
         // AbortErrorの場合は正常なキャンセルとして扱う

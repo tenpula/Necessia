@@ -24,20 +24,47 @@ function OrbitNode({ data }: NodeProps) {
   const contextInfo = CONTEXT_TYPE_INFO[contextType];
 
   const color = contextInfo?.color || '#94a3b8'; // default to slate
+  const diameter = radius * 2;
 
   return (
     <div
-      className="rounded-full border-[1.5px] border-dashed pointer-events-none absolute"
+      className="relative pointer-events-none"
       style={{
-        width: radius * 2,
-        height: radius * 2,
-        borderColor: color,
-        opacity: 0.3, // Faint orbital ring
-        left: '50%',
-        top: '50%',
-        transform: 'translate(-50%, -50%)',
+        width: diameter,
+        height: diameter,
       }}
-    />
+    >
+      {/* グロー効果用の背景レイヤー */}
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          boxShadow: `0 0 22px ${color}55`,
+          opacity: 0.3,
+        }}
+      />
+
+      {/* メインの軌道リング */}
+      <div
+        className="absolute inset-0 rounded-full border-[2px]"
+        style={{
+          borderColor: color,
+          opacity: 0.75,
+          boxShadow: `0 0 14px ${color}55, inset 0 0 14px ${color}22`,
+        }}
+      />
+
+      {/* ラベル表示 */}
+      <div
+        className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-semibold whitespace-nowrap"
+        style={{
+          color,
+          opacity: 0.85,
+          textShadow: '0 0 10px rgba(0,0,0,0.45)',
+        }}
+      >
+        {contextInfo?.label}
+      </div>
+    </div>
   );
 }
 

@@ -27,11 +27,11 @@ import { useCitationAnalysis } from '@/hooks/useCitationAnalysis';
 import PaperNode from './PaperNode';
 import OrbitNode from './OrbitNode';
 import PaperDetailPanel from './PaperDetailPanel';
-import GapProposals from './GapProposals';
 import GapDetailPanel from './GapDetailPanel';
 
 interface CitationGraphProps {
   network: CitationNetwork;
+  selectedGapProposal?: GapProposal | null;
   onAnalysisComplete?: (updatedNetwork: CitationNetwork) => void;
   onGapProposalChange?: (proposal: GapProposal | null) => void;
   onAnalysisProgressChange?: (progress: AnalysisProgress) => void;
@@ -44,7 +44,7 @@ const nodeTypes = {
   orbit: OrbitNode,
 };
 
-export default function CitationGraph({ network, onAnalysisComplete, onGapProposalChange, onAnalysisProgressChange, onStartAnalysisReady, onCancelAnalysisReady }: CitationGraphProps) {
+export default function CitationGraph({ network, selectedGapProposal, onAnalysisComplete, onGapProposalChange, onAnalysisProgressChange, onStartAnalysisReady, onCancelAnalysisReady }: CitationGraphProps) {
   // カスタムフックで解析ロジックを管理（自動開始は無効化）
   // networkがnullの場合はダミーネットワークを渡す（フックのエラーを防ぐため）
   const dummyNetwork: CitationNetwork = {
@@ -52,12 +52,13 @@ export default function CitationGraph({ network, onAnalysisComplete, onGapPropos
     papers: [],
     citations: [],
   };
+  const cancelledNetwork: CitationNetwork = {
+    ...dummyNetwork,
+    seedPaper: { ...dummyNetwork.seedPaper, id: '__cancelled__' },
+  };
   
   // ネットワークがnullの場合、一意のIDを持つダミーネットワークを使用して変更を検出可能にする
-  const networkToUse = network || {
-    ...dummyNetwork,
-    seedPaper: { ...dummyNetwork.seedPaper, id: `__cancelled_${Date.now()}` },
-  };
+  const networkToUse = network || cancelledNetwork;
   
   const { currentNetwork, analysisProgress, startAnalysis, cancelAnalysis } = useCitationAnalysis(networkToUse, {
     onAnalysisComplete,
@@ -144,7 +145,6 @@ export default function CitationGraph({ network, onAnalysisComplete, onGapPropos
 
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
-  const [selectedGapProposal, setSelectedGapProposal] = useState<GapProposal | null>(null);
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
 
   // ネットワーク変更時にノードとエッジを更新
@@ -202,47 +202,26 @@ export default function CitationGraph({ network, onAnalysisComplete, onGapPropos
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     const nodeData = node.data as { paper: Paper; isSeed: boolean };
     setSelectedPaper(nodeData.paper);
-    setSelectedGapProposal(null);
-  }, []);
+    onGapProposalChange?.(null);
+  }, [onGapProposalChange]);
 
   const onPaneClick = useCallback(() => {
     setSelectedPaper(null);
-    setSelectedGapProposal(null);
-  }, []);
+    onGapProposalChange?.(null);
+  }, [onGapProposalChange]);
 
   const handlePaperClose = useCallback(() => {
     setSelectedPaper(null);
   }, []);
 
-  const handleGapProposalClick = useCallback(
-    (proposal: GapProposal) => {
-      setSelectedGapProposal(proposal);
-      setSelectedPaper(null);
-      onGapProposalChange?.(proposal);
-
-      // ビューを調整
-      if (reactFlowInstance.current) {
-        const nodeA = nodes.find((n) => n.id === proposal.paperA.id);
-        if (nodeA) {
-          reactFlowInstance.current.setCenter(nodeA.position.x, nodeA.position.y, {
-            zoom: 1.2,
-            duration: 500,
-          });
-        }
-      }
-    },
-    [nodes, onGapProposalChange]
-  );
-
   const handleGapDetailClose = useCallback(() => {
-    setSelectedGapProposal(null);
     onGapProposalChange?.(null);
   }, [onGapProposalChange]);
 
   const handleGapDetailPaperClick = useCallback((paper: Paper) => {
     setSelectedPaper(paper);
-    setSelectedGapProposal(null);
-  }, []);
+    onGapProposalChange?.(null);
+  }, [onGapProposalChange]);
 
   return (
     <div className="w-full h-full relative" style={{ width: '100%', height: '100%' }}>
@@ -255,6 +234,7 @@ export default function CitationGraph({ network, onAnalysisComplete, onGapPropos
         onPaneClick={onPaneClick}
         onInit={onInit}
         nodeTypes={nodeTypes}
+        nodeOrigin={[0.5, 0.5]}
         minZoom={0.1}
         maxZoom={2}
         className="bg-slate-950"
@@ -281,9 +261,6 @@ export default function CitationGraph({ network, onAnalysisComplete, onGapPropos
           isSeed={selectedPaper.id === currentNetwork.seedPaper.id}
         />
       )}
-
-      {/* Gap提案パネル */}
-      <GapProposals network={currentNetwork} onProposalClick={handleGapProposalClick} />
 
       {/* Gap詳細パネル */}
       {selectedGapProposal && (

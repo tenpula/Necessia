@@ -1,7 +1,6 @@
 /*
- * 【ファイル概要】
- * メイン画面の枠組み
- * 上部のバーや左右のサイドバー、中央の表示エリアなどをどう配置するかを決めています。
+ * ページ全体のレイアウトを構成するコンポーネント。
+ * サイドバー、メイン領域、アカウントメニューの配置を担当する。
  */
 
 'use client';
@@ -14,7 +13,7 @@ import StarryBackground from '../StarryBackground';
 import { Paper } from '../../types/necessia';
 import { CitationNetwork, GapProposal, AnalysisProgress } from '../../types/paper';
 
-// Mock data matching the UI screenshot from necessia-page
+// 初期表示用のプレビュー情報。ネットワーク未選択時の右サイドバーに使う。
 const MOCK_PAPER: Paper = {
   id: '1',
   title: 'Entanglement Swapping between Independent Sources',
@@ -45,8 +44,7 @@ interface MainLayoutProps {
   contextStats?: Record<string, number>;
   selectedGapProposal?: GapProposal | null;
   onStartAnalysis?: (requestDelay: number) => void;
-  remainingUsage?: number;
-  usageLimit?: number;
+  onGapProposalChange?: (proposal: GapProposal | null) => void;
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ 
@@ -57,10 +55,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   contextStats,
   selectedGapProposal,
   onStartAnalysis,
-  remainingUsage,
-  usageLimit,
+  onGapProposalChange,
 }) => {
-  const [selectedPaper] = useState<Paper | null>(showSidebars && !network ? MOCK_PAPER : null); // Conditionally set MOCK_PAPER
+  const previewPaper = showSidebars && !network ? MOCK_PAPER : null;
   const { data: session, status } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -74,11 +71,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleBack = () => {
-    // In the context of research-gap-visualizer, this might reset the view
-    console.log("Back button clicked");
-  };
 
   return (
     <div className="h-full flex flex-col text-slate-900 dark:text-white font-display overflow-hidden relative">
@@ -129,21 +121,22 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       )}
       
       <div className="flex flex-1 relative overflow-hidden">
+        <main className={`flex-1 relative flex flex-col overflow-hidden ${status === 'authenticated' ? 'pt-16' : ''}`}>
+          {children}
+        </main>
+
         {showSidebars && (
-          <SidebarLeft 
+          <SidebarLeft
             network={network}
             analysisProgress={analysisProgress}
             contextStats={contextStats}
             selectedGapProposal={selectedGapProposal}
             onStartAnalysis={onStartAnalysis}
+            onGapProposalChange={onGapProposalChange}
           />
         )}
         
-        <main className="flex-1 relative flex flex-col overflow-hidden">
-          {children}
-        </main>
-        
-        {selectedPaper && showSidebars && !network && <SidebarRight paper={selectedPaper} />}
+        {previewPaper && <SidebarRight paper={previewPaper} />}
       </div>
     </div>
   );

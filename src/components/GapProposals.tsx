@@ -14,9 +14,10 @@ import { formatPaperTitle } from '@/lib/format';
 interface GapProposalsProps {
   network: CitationNetwork;
   onProposalClick?: (proposal: GapProposal) => void;
+  variant?: 'floating' | 'embedded';
 }
 
-export default function GapProposals({ network, onProposalClick }: GapProposalsProps) {
+export default function GapProposals({ network, onProposalClick, variant = 'floating' }: GapProposalsProps) {
   const [proposals, setProposals] = useState<GapProposal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +102,19 @@ export default function GapProposals({ network, onProposalClick }: GapProposalsP
     setIsCollapsed((prev) => !prev);
   }, []);
 
+  if (variant === 'embedded') {
+    return (
+      <EmbeddedGapPanel
+        isLoading={isLoading}
+        error={error}
+        proposals={proposals}
+        onAnalyze={findGaps}
+        onRetry={handleRetry}
+        onProposalClick={onProposalClick}
+      />
+    );
+  }
+
   return (
     <>
       <ToggleButton isPanelOpen={isPanelOpen} onClick={handleToggle} />
@@ -118,6 +132,61 @@ export default function GapProposals({ network, onProposalClick }: GapProposalsP
         onProposalClick={onProposalClick}
       />
     </>
+  );
+}
+
+interface EmbeddedGapPanelProps {
+  isLoading: boolean;
+  error: string | null;
+  proposals: GapProposal[];
+  onAnalyze: () => Promise<void>;
+  onRetry: () => void;
+  onProposalClick?: (proposal: GapProposal) => void;
+}
+
+function EmbeddedGapPanel({ isLoading, error, proposals, onAnalyze, onRetry, onProposalClick }: EmbeddedGapPanelProps) {
+  return (
+    <div className="bg-neutral-50 dark:bg-[#1c1c27] rounded-lg p-3 border border-neutral-200 dark:border-neutral-800">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">研究ギャップの提案</h3>
+        <button
+          onClick={proposals.length > 0 ? onRetry : onAnalyze}
+          disabled={isLoading}
+          className="text-xs px-3 py-1.5 rounded-full bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-200 border border-neutral-700"
+        >
+          {proposals.length > 0 ? '再分析' : '分析する'}
+        </button>
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center gap-2 text-sm text-neutral-400">
+          <LoadingSpinner size="sm" />
+          <span>研究ギャップを分析中...</span>
+        </div>
+      )}
+
+      {!isLoading && error && (
+        <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md px-2 py-2">
+          {error}
+        </div>
+      )}
+
+      {!isLoading && !error && proposals.length === 0 && (
+        <p className="text-xs text-neutral-500 dark:text-[#9d9db9]">分析ボタンを押すと、見落とされている可能性のある論文ペアを提案します。</p>
+      )}
+
+      {!isLoading && !error && proposals.length > 0 && (
+        <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-1">
+          {proposals.map((proposal) => (
+            <ProposalItem
+              key={`${proposal.paperA.id}-${proposal.paperB.id}`}
+              proposal={proposal}
+              onProposalClick={onProposalClick}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

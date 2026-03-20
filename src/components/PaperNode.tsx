@@ -40,7 +40,7 @@ function PaperNode({ data }: NodeProps) {
 
   return (
     <>
-      <NodeHandles isSeed={isSeed} />
+      <NodeHandles />
       <div
         className={`relative flex flex-col items-center justify-center p-3 
                    cursor-pointer transition-all duration-200
@@ -103,11 +103,7 @@ function getNodeStyles(
 }
 
 // ノードハンドル
-interface NodeHandlesProps {
-  isSeed: boolean;
-}
-
-function NodeHandles({ isSeed }: NodeHandlesProps) {
+function NodeHandles() {
   // すべてのノードの中心にハンドルを配置（エッジがノードの中心を指すように）
   return (
     <>
