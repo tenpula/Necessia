@@ -378,7 +378,7 @@ function ProposalItem({ proposal, onProposalClick }: ProposalItemProps) {
       <div className="flex items-center gap-3 mb-2 text-xs">
         <div className="flex items-center gap-1">
           <span className="text-slate-400">類似度:</span>
-          <span className="text-cyan-400 font-medium">{(proposal.similarityScore * 100).toFixed(0)}%</span>
+          <span className="text-neutral-300 font-medium">{(proposal.similarityScore * 100).toFixed(0)}%</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="text-slate-400">共引用数:</span>

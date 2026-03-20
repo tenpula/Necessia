@@ -12,7 +12,7 @@ export default function FeaturesView() {
       <div className="text-center mb-16">
         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
           Powerful Features for <br/>
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+          <span className="text-transparent bg-clip-text bg-neutral-700">
             Research Analysis
           </span>
         </h2>
@@ -22,8 +22,8 @@ export default function FeaturesView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
-        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8 hover:border-cyan-500/30 transition-all duration-300">
-          <div className="w-16 h-16 bg-cyan-500/10 rounded-2xl flex items-center justify-center mb-6 text-cyan-400">
+        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8 hover:border-neutral-700 transition-all duration-300">
+          <div className="w-16 h-16 bg-neutral-800 rounded-2xl flex items-center justify-center mb-6 text-neutral-300">
             <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -35,15 +35,15 @@ export default function FeaturesView() {
           </p>
           <ul className="space-y-3 text-slate-300">
             <li className="flex items-center gap-3">
-              <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
+              <span className="w-1.5 h-1.5 bg-neutral-500 rounded-full"></span>
               arXiv ID / URL Support
             </li>
             <li className="flex items-center gap-3">
-              <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
+              <span className="w-1.5 h-1.5 bg-neutral-500 rounded-full"></span>
               DOI Resolution
             </li>
             <li className="flex items-center gap-3">
-              <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
+              <span className="w-1.5 h-1.5 bg-neutral-500 rounded-full"></span>
               Fuzzy Title Matching
             </li>
           </ul>

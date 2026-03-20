@@ -46,7 +46,7 @@ function PaperNode({ data }: NodeProps) {
                    cursor-pointer transition-all duration-200
                    hover:scale-110 hover:z-10 group
                    ${shapeClass}
-                   ${isSeed ? 'ring-4 ring-cyan-400 ring-opacity-60' : ''}
+                   ${isSeed ? 'ring-4 ring-neutral-500 ring-opacity-60' : ''}
                    ${gapRole === 'paperA' ? 'ring-4 ring-purple-500 ring-opacity-80 animate-pulse' : ''}
                    ${gapRole === 'paperB' ? 'ring-4 ring-pink-500 ring-opacity-80 animate-pulse' : ''}`}
         style={{
@@ -167,7 +167,7 @@ function NodeTooltip({ paper }: NodeTooltipProps) {
         className="bg-slate-900/95 backdrop-blur-sm text-white p-4 rounded-xl shadow-2xl
                   border border-slate-700/50 w-80 max-w-sm"
       >
-        <h4 className="font-semibold text-cyan-300 text-sm leading-snug mb-2">{paper.title}</h4>
+        <h4 className="font-semibold text-neutral-300 text-sm leading-snug mb-2">{paper.title}</h4>
         <p className="text-xs text-slate-300 mb-1">{displayAuthors}</p>
         {paper.venue && <p className="text-xs text-slate-400 mb-1 italic">{paper.venue}</p>}
         <div className="flex gap-3 mt-2 text-xs">

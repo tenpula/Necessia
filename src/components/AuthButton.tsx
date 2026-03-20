@@ -99,7 +99,7 @@ export default function AuthButton({ remainingUsage, usageLimit = 3 }: AuthButto
         {remainingUsage !== undefined && (
           <div className={`text-xs font-bold px-2.5 py-1 rounded-full border transition-colors
             ${remainingUsage > 0
-              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+              ? 'bg-neutral-800 text-neutral-300 border-neutral-700'
               : 'bg-red-500/20 text-red-300 border-red-500/30'
             }`}
           >
@@ -114,12 +114,12 @@ export default function AuthButton({ remainingUsage, usageLimit = 3 }: AuthButto
             <img
               src={session.user.image}
               alt={session.user.name || 'User'}
-              className="size-10 rounded-full ring-2 ring-cyan-500/30 group-hover:ring-cyan-500/50 transition-all"
+              className="size-10 rounded-full ring-2 ring-neutral-600 group-hover:ring-neutral-500 transition-all"
             />
           ) : (
-            <div className="size-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 
+            <div className="size-10 rounded-full bg-neutral-700 
                             flex items-center justify-center text-white font-bold text-sm
-                            ring-2 ring-cyan-500/30 group-hover:ring-cyan-500/50 transition-all">
+                            ring-2 ring-neutral-600 group-hover:ring-neutral-500 transition-all">
               {session?.user?.name?.charAt(0)?.toUpperCase() || '?'}
             </div>
           )}

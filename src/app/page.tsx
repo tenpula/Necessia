@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
 import SearchForm from '@/components/SearchForm';
 import CitationGraph from '@/components/CitationGraph';
 import FeaturesView from '@/components/FeaturesView';
@@ -32,6 +32,7 @@ type Tab = 'search' | 'features';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('search');
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [network, setNetwork] = useState<CitationNetwork | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +48,22 @@ export default function Home() {
   const [remainingUsage, setRemainingUsage] = useState<number | undefined>(undefined);
   const [usageLimit, setUsageLimit] = useState<number>(3);
   const [showUsageLimitBanner, setShowUsageLimitBanner] = useState(false);
+
+  // ポップアップ監視用: ポップアップ側の完了通知受信 & ポップアップ自身のクローズ処理
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.opener && window.name === 'LoginWindow') {
+      window.opener.postMessage({ type: 'LOGIN_SUCCESS' }, window.location.origin);
+      window.close();
+    }
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin === window.location.origin && event.data?.type === 'LOGIN_SUCCESS') {
+        window.location.reload();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   // 利用回数を取得する関数
   const fetchUsage = useCallback(async () => {
@@ -239,8 +256,8 @@ export default function Home() {
             {/* Seed論文情報 */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-full max-w-xl px-4 pointer-events-none">
               <div className="px-6 py-4 bg-slate-900/90 backdrop-blur-md rounded-2xl
-                            border border-cyan-500/30 shadow-xl shadow-cyan-900/20 text-center pointer-events-auto">
-                <p className="text-[10px] uppercase tracking-wider text-cyan-400 font-bold mb-1">現在のSeed論文</p>
+                            border border-neutral-700 shadow-xl shadow-black/40 text-center pointer-events-auto">
+                <p className="text-[10px] uppercase tracking-wider text-neutral-300 font-bold mb-1">現在のSeed論文</p>
                 <h3 className="text-white font-bold text-sm md:text-base leading-tight line-clamp-2">
                   {network.seedPaper.title}
                 </h3>
@@ -289,25 +306,25 @@ export default function Home() {
                   <p className="text-slate-400 text-sm mb-3 font-semibold">対応している形式:</p>
                   <ul className="space-y-2 text-slate-300 text-sm">
                     <li className="flex items-center gap-2">
-                      <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg className="w-4 h-4 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                       arXiv URL (例: https://arxiv.org/abs/1706.03762)
                     </li>
                     <li className="flex items-center gap-2">
-                      <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg className="w-4 h-4 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                       arXiv ID (例: 2010.11929)
                     </li>
                     <li className="flex items-center gap-2">
-                      <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg className="w-4 h-4 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                       DOI (例: 10.48550/arXiv.1706.03762)
                     </li>
                     <li className="flex items-center gap-2">
-                      <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg className="w-4 h-4 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                       論文タイトル
@@ -318,10 +335,10 @@ export default function Home() {
                 {/* 戻るボタン */}
                 <button
                   onClick={handleResetError}
-                  className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 
-                           hover:from-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl
-                           transition-all duration-200 shadow-lg shadow-cyan-500/20 hover:shadow-xl hover:shadow-cyan-500/30
-                           transform hover:scale-105"
+                  className="group inline-flex items-center gap-3 px-8 py-4 bg-slate-800 
+                           hover:bg-slate-700 border border-slate-600 text-slate-200 hover:text-white font-medium rounded-xl
+                           transition-all duration-200 shadow-lg shadow-black/40 hover:shadow-xl hover:shadow-black/50
+                           transform hover:-translate-y-0.5"
                 >
                   <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -333,37 +350,60 @@ export default function Home() {
           </div>
         ) : (
           // タブコンテンツ
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 overflow-y-auto custom-scrollbar relative">
             {activeTab === 'search' ? (
               // Search Tab Content
-              <div className="flex flex-col items-center justify-center min-h-full px-6 py-12 relative">
-                <div className="relative z-10 w-full max-w-4xl mx-auto text-center">
-                  <div className="mb-12 space-y-6">
-                    <h2 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 tracking-tight leading-tight drop-shadow-sm">
-                      研究の空白を <br/>
-                      <span className="text-cyan-400">論理的に可視化する</span>
-                    </h2>
-                    <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                      AIによる引用分析を使用して、情報工学研究におけるミッシングリンクと隠れたつながりを発見します。
-                    </p>
-                  </div>
-
-                  <div className="mt-10">
-                    <SearchForm onSearch={handleSearch} isLoading={isLoading} />
-                  </div>
-
-                  {/* プログレス表示 */}
-                  {progress && (
-                    <div className="mt-8 inline-flex items-center gap-3 px-6 py-3 bg-slate-800/50 rounded-full border border-slate-700/50 text-slate-300 animate-in fade-in slide-in-from-bottom-4">
-                      <svg className="animate-spin h-5 w-5 text-cyan-500" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      <span className="font-medium tracking-wide">{progress}</span>
-                    </div>
-                  )}
+              authStatus === 'loading' ? (
+                <div className="flex items-center justify-center min-h-full">
+                  <div className="animate-pulse w-8 h-8 rounded-full bg-neutral-600"></div>
                 </div>
-              </div>
+              ) : authStatus === 'unauthenticated' ? (
+                <div className={`flex flex-col items-center justify-center min-h-full px-6 py-12 relative z-10 transition-all duration-700 ease-in-out ${isTransitioning ? 'opacity-0 scale-95 blur-[2px]' : 'opacity-100 scale-100 blur-none'}`}>
+                  <button
+                    onClick={() => {
+                      setIsTransitioning(true);
+                      setTimeout(() => {
+                        const width = 500;
+                        const height = 600;
+                        const left = window.screen.width / 2 - width / 2;
+                        const top = window.screen.height / 2 - height / 2;
+                        window.open(
+                          '/api/auth/signin/google?callbackUrl=/',
+                          'LoginWindow',
+                          `width=${width},height=${height},left=${left},top=${top}`
+                        );
+                        // アニメーション後に状態を戻しておく
+                        setTimeout(() => setIsTransitioning(false), 500);
+                      }, 600);
+                    }}
+                    className="group flex items-center gap-4 px-10 py-4 bg-slate-900/90 backdrop-blur-md border border-slate-700 hover:border-slate-500 hover:bg-slate-800 text-slate-200 hover:text-white font-medium rounded-full transition-all duration-300 shadow-lg shadow-black/50 transform hover:-translate-y-0.5"
+                  >
+                    <svg className="w-6 h-6 text-slate-400 group-hover:text-slate-200 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    </svg>
+                    <span className="text-xl tracking-wider">Log in</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center min-h-full px-6 py-12 relative animate-in fade-in zoom-in-95 duration-1000">
+                  <div className="relative z-10 w-full max-w-4xl mx-auto text-center mt-6">
+                    <div>
+                      <SearchForm onSearch={handleSearch} isLoading={isLoading} />
+                    </div>
+
+                    {/* プログレス表示 */}
+                    {progress && (
+                      <div className="mt-8 inline-flex items-center gap-3 px-6 py-3 bg-slate-800/50 rounded-full border border-slate-700/50 text-slate-300 animate-in fade-in slide-in-from-bottom-4">
+                        <svg className="animate-spin h-5 w-5 text-neutral-300" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        <span className="font-medium tracking-wide">{progress}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
             ) : (
               // Features Tab Content
               <FeaturesView />

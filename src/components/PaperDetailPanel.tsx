@@ -20,7 +20,7 @@ export default function PaperDetailPanel({ paper, onClose, isSeed }: PaperDetail
   const header = (
     <div className="flex items-center gap-2">
       {isSeed && (
-        <span className="px-2 py-0.5 text-xs font-semibold bg-cyan-500/20 text-cyan-300 rounded-full">
+        <span className="px-2 py-0.5 text-xs font-semibold bg-neutral-800 text-neutral-300 rounded-full">
           シード論文
         </span>
       )}
@@ -116,7 +116,7 @@ function MetricCard({ label, value, highlight = false }: MetricCardProps) {
   return (
     <div className="bg-slate-800/50 rounded-xl p-3">
       <span className="text-xs text-slate-400 block mb-1">{label}</span>
-      <span className={`text-xl font-bold ${highlight ? 'text-cyan-400' : 'text-white'}`}>
+      <span className={`text-xl font-bold ${highlight ? 'text-neutral-300' : 'text-white'}`}>
         {value}
       </span>
     </div>

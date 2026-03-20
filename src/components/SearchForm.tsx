@@ -62,7 +62,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
   }, []);
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full max-w-lg mx-auto">
       <form onSubmit={handleSubmit} className="relative">
         <div className="relative">
           <input
@@ -70,10 +70,10 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             value={query}
             onChange={handleQueryChange}
             placeholder="arXivのURL、DOI、または論文タイトルを入力..."
-            className="w-full px-6 py-4 text-lg bg-slate-800/50 border border-slate-600/50 rounded-2xl
-                     text-slate-100 placeholder-slate-400
-                     focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50
-                     transition-all duration-200"
+            className="w-full pl-6 pr-24 py-3 text-sm bg-neutral-900 border border-neutral-700 rounded-full
+                     text-neutral-200 placeholder-neutral-500
+                     focus:outline-none focus:border-neutral-500 focus:bg-neutral-800
+                     transition-all duration-200 shadow-inner shadow-black/50"
             disabled={isLoading}
           />
           <SubmitButton isLoading={isLoading} isDisabled={!query.trim()} />
@@ -100,12 +100,11 @@ function SubmitButton({ isLoading, isDisabled }: SubmitButtonProps) {
     <button
       type="submit"
       disabled={isLoading || isDisabled}
-      className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2.5
-               bg-gradient-to-r from-cyan-500 to-blue-500 
-               hover:from-cyan-400 hover:to-blue-400
-               disabled:from-slate-600 disabled:to-slate-600 disabled:cursor-not-allowed
-               text-white font-semibold rounded-xl
-               transition-all duration-200 shadow-lg shadow-cyan-500/20"
+      className="absolute right-1.5 top-1/2 -translate-y-1/2 px-4 py-1.5
+               bg-neutral-800 hover:bg-neutral-700 border border-neutral-600
+               disabled:bg-neutral-800 disabled:border-neutral-700 disabled:text-neutral-500 disabled:cursor-not-allowed
+               text-neutral-200 text-sm font-medium rounded-full
+               transition-all duration-200 shadow-md shadow-black/40"
     >
       {isLoading ? (
         <span className="flex items-center gap-2">
@@ -135,8 +134,8 @@ function ExampleQueries({ examples, onExampleClick, isLoading }: ExampleQueriesP
           <button
             key={example.value}
             onClick={() => onExampleClick(example.value)}
-            className="text-sm px-3 py-1 bg-slate-700/50 hover:bg-slate-600/50 
-                     text-slate-300 rounded-lg transition-colors duration-150"
+            className="text-xs px-3 py-1 bg-neutral-800 hover:bg-neutral-700 
+                     text-neutral-400 hover:text-neutral-300 rounded-md transition-colors duration-150 border border-neutral-700/50"
             disabled={isLoading}
           >
             {example.label}

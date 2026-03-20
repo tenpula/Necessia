@@ -35,7 +35,7 @@ export default function GapDetailPanel({
 
       {/* メトリクス */}
       <div className="grid grid-cols-2 gap-3">
-        <MetricCard label="類似度" value={`${(proposal.similarityScore * 100).toFixed(0)}%`} color="cyan" />
+        <MetricCard label="類似度" value={`${(proposal.similarityScore * 100).toFixed(0)}%`} color="gray" />
         <MetricCard label="共引用数" value={proposal.coCitationCount.toString()} color="purple" />
       </div>
 
@@ -101,11 +101,11 @@ function ConfidenceScore({ confidence }: ConfidenceScoreProps) {
 interface MetricCardProps {
   label: string;
   value: string;
-  color: 'cyan' | 'purple';
+  color: 'gray' | 'purple';
 }
 
 function MetricCard({ label, value, color }: MetricCardProps) {
-  const colorClass = color === 'cyan' ? 'text-cyan-400' : 'text-purple-400';
+  const colorClass = color === 'gray' ? 'text-neutral-300' : 'text-purple-400';
 
   return (
     <div className="bg-slate-800/50 rounded-xl p-3">
@@ -216,7 +216,7 @@ function WhyGapSection({ similarityScore, coCitationCount }: WhyGapSectionProps)
       <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside">
         <li>
           これらの論文は{' '}
-          <strong className="text-cyan-400">{(similarityScore * 100).toFixed(0)}% の内容類似度を持ち</strong>
+          <strong className="text-neutral-300">{(similarityScore * 100).toFixed(0)}% の内容類似度を持ち</strong>
           、関連するトピックを扱っていることを示しています。
         </li>
         {coCitationCount > 0 && (
