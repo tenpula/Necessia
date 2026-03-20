@@ -12,7 +12,7 @@
  */
 import { Paper } from '@/types/paper';
 
-const GEMINI_EMBEDDING_MODEL = 'models/text-embedding-004';
+const GEMINI_EMBEDDING_MODEL = 'models/gemini-embedding-001';
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
 

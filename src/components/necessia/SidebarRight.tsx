@@ -39,12 +39,12 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({ paper }) => {
           </h2>
           <div className="flex items-center gap-2 text-slate-500 dark:text-[#9d9db9] text-sm">
             <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-            <span>Published {paper.month} {paper.year}</span>
+            <span>出版: {paper.month} {paper.year}</span>
           </div>
         </div>
 
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-bold text-slate-400 dark:text-[#6b6b80] uppercase tracking-wider">Authors</h3>
+          <h3 className="text-xs font-bold text-slate-400 dark:text-[#6b6b80] uppercase tracking-wider">著者</h3>
           <div className="flex flex-wrap gap-2">
             {paper.authors.map((author, idx) => (
               <div key={idx} className="flex items-center gap-2 bg-slate-100 dark:bg-[#282839] rounded-full pr-3 pl-1 py-1">
@@ -57,26 +57,26 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({ paper }) => {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-slate-50 dark:bg-[#1c1c27] p-3 rounded-lg border border-slate-200 dark:border-[#282839]">
-            <p className="text-xs text-slate-500 dark:text-[#9d9db9] mb-1">Citations</p>
+            <p className="text-xs text-slate-500 dark:text-[#9d9db9] mb-1">引用数</p>
             <p className="text-xl font-bold text-slate-900 dark:text-white">{paper.citations.toLocaleString()}</p>
           </div>
           <div className="bg-slate-50 dark:bg-[#1c1c27] p-3 rounded-lg border border-slate-200 dark:border-[#282839]">
-            <p className="text-xs text-slate-500 dark:text-[#9d9db9] mb-1">Impact Factor</p>
+            <p className="text-xs text-slate-500 dark:text-[#9d9db9] mb-1">インパクトファクター</p>
             <p className="text-xl font-bold text-slate-900 dark:text-white">{paper.impactFactor}</p>
           </div>
         </div>
 
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-bold text-slate-400 dark:text-[#6b6b80] uppercase tracking-wider">Abstract</h3>
+          <h3 className="text-xs font-bold text-slate-400 dark:text-[#6b6b80] uppercase tracking-wider">概要</h3>
           <p className="text-slate-600 dark:text-[#d0d0e0] text-sm leading-relaxed font-body">
             {paper.abstract}
-            <a href="#" className="text-primary hover:text-blue-400 ml-1">Read more</a>
+            <a href="#" className="text-primary hover:text-blue-400 ml-1">続きを読む</a>
           </p>
         </div>
 
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center">
-            <h3 className="text-xs font-bold text-slate-400 dark:text-[#6b6b80] uppercase tracking-wider">Connected Nodes ({paper.connectedNodes.length})</h3>
+            <h3 className="text-xs font-bold text-slate-400 dark:text-[#6b6b80] uppercase tracking-wider">関連ノード ({paper.connectedNodes.length})</h3>
           </div>
           <div className="flex flex-col gap-2">
             {paper.connectedNodes.map((node) => (
@@ -96,7 +96,7 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({ paper }) => {
         <div className="mt-auto pt-4">
           <button className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-xl transition-all shadow-lg shadow-primary/25">
             <span className="material-symbols-outlined">open_in_new</span>
-            Access Full Paper
+            フルペーパーにアクセス
           </button>
         </div>
       </div>

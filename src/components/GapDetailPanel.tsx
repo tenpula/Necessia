@@ -24,7 +24,7 @@ export default function GapDetailPanel({
   const header = (
     <div className="flex items-center gap-2">
       <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-      <h3 className="text-lg font-semibold text-white">Research Gap</h3>
+      <h3 className="text-lg font-semibold text-white">研究の空白（Gap）</h3>
     </div>
   );
 
@@ -35,8 +35,8 @@ export default function GapDetailPanel({
 
       {/* メトリクス */}
       <div className="grid grid-cols-2 gap-3">
-        <MetricCard label="Similarity" value={`${(proposal.similarityScore * 100).toFixed(0)}%`} color="cyan" />
-        <MetricCard label="Co-citations" value={proposal.coCitationCount.toString()} color="purple" />
+        <MetricCard label="類似度" value={`${(proposal.similarityScore * 100).toFixed(0)}%`} color="cyan" />
+        <MetricCard label="共引用数" value={proposal.coCitationCount.toString()} color="purple" />
       </div>
 
       {/* 説明文 */}
@@ -45,7 +45,7 @@ export default function GapDetailPanel({
       {/* 論文A */}
       <PaperCard
         paper={proposal.paperA}
-        label="Paper A"
+        label="論文 A"
         labelColor="purple"
         onPaperClick={onPaperClick}
       />
@@ -53,7 +53,7 @@ export default function GapDetailPanel({
       {/* 論文B */}
       <PaperCard
         paper={proposal.paperB}
-        label="Paper B"
+        label="論文 B"
         labelColor="pink"
         onPaperClick={onPaperClick}
       />
@@ -84,7 +84,7 @@ function ConfidenceScore({ confidence }: ConfidenceScoreProps) {
   return (
     <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl p-4 border border-purple-500/30">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-semibold text-purple-300">Confidence Score</span>
+        <span className="text-sm font-semibold text-purple-300">信頼度スコア</span>
         <span className="text-lg font-bold text-white">{Math.round(confidence * 100)}%</span>
       </div>
       <div className="w-full bg-slate-700/50 rounded-full h-3">
@@ -124,7 +124,7 @@ function AnalysisSection({ reasoning }: AnalysisSectionProps) {
   return (
     <div className="bg-slate-800/50 rounded-xl p-4">
       <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">
-        Analysis
+        分析
       </h4>
       <p className="text-sm text-slate-300 leading-relaxed">{reasoning}</p>
     </div>
@@ -159,7 +159,7 @@ function PaperCard({ paper, label, labelColor, onPaperClick }: PaperCardProps) {
             {paper.venueType !== 'unknown' && (
               <span className="px-2 py-0.5 bg-slate-700/50 rounded">{paper.venueType}</span>
             )}
-            <span>{formatNumber(paper.citationCount)} citations</span>
+            <span>{formatNumber(paper.citationCount)} 引用</span>
           </div>
           {paper.abstract && (
             <p className="text-slate-500 mt-2 line-clamp-3">{paper.abstract}</p>
@@ -180,7 +180,7 @@ function CommonCitationsSection({ citations, onPaperClick }: CommonCitationsSect
   return (
     <div className="bg-slate-800/50 rounded-xl p-4">
       <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
-        Common Citations ({citations.length})
+        共通の引用文献 ({citations.length})
       </h4>
       <div className="space-y-2">
         {citations.map((paper) => (
@@ -191,7 +191,7 @@ function CommonCitationsSection({ citations, onPaperClick }: CommonCitationsSect
             <button onClick={() => onPaperClick?.(paper)} className="text-left w-full">
               <p className="text-sm text-white font-medium line-clamp-2 mb-1">{paper.title}</p>
               <p className="text-xs text-slate-400">
-                {paper.publicationYear} · {formatNumber(paper.citationCount)} citations
+                {paper.publicationYear} · {formatNumber(paper.citationCount)} 引用
               </p>
             </button>
           </div>
@@ -211,29 +211,29 @@ function WhyGapSection({ similarityScore, coCitationCount }: WhyGapSectionProps)
   return (
     <div className="bg-slate-800/30 rounded-xl p-4 border border-purple-500/20">
       <h4 className="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-2">
-        Why This Is A Gap
+        なぜこれがGapなのか
       </h4>
       <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside">
         <li>
-          These papers have{' '}
-          <strong className="text-cyan-400">{(similarityScore * 100).toFixed(0)}% semantic similarity</strong>,
-          indicating they address related topics.
+          これらの論文は{' '}
+          <strong className="text-cyan-400">{(similarityScore * 100).toFixed(0)}% の内容類似度を持ち</strong>
+          、関連するトピックを扱っていることを示しています。
         </li>
         {coCitationCount > 0 && (
           <li>
-            They share{' '}
+            これらは{' '}
             <strong className="text-purple-400">
-              {coCitationCount} common citation{coCitationCount > 1 ? 's' : ''}
+              {coCitationCount} 件の共通引用文献
             </strong>
-            , suggesting similar research foundations.
+            を共有しており、類似した研究基盤があることを示唆しています。
           </li>
         )}
         <li>
-          Despite these connections, they{' '}
-          <strong className="text-red-400">do not directly cite each other</strong>, indicating a
-          potential research gap.
+          これらのつながりにもかかわらず、互いに{' '}
+          <strong className="text-red-400">直接引用しておらず</strong>
+          、潜在的な研究の空白（Gap）がある可能性を示しています。
         </li>
-        <li>A comparative analysis or direct comparison could provide valuable insights.</li>
+        <li>これらの比較や分析は、価値ある知見をもたらす可能性があります。</li>
       </ul>
     </div>
   );

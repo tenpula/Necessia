@@ -32,7 +32,7 @@ const MAX_LIMIT = parseInt(process.env.USAGE_LIMIT || '3', 10);
  * @returns 残り回数（0以上）
  */
 export async function getRemainingUsage(userId: string): Promise<number> {
-  if (MAX_LIMIT === 0) {
+  if (MAX_LIMIT === 0 || process.env.NODE_ENV === 'development') {
     return 999;
   }
 
@@ -61,7 +61,7 @@ export async function checkAndIncrementUsage(
   userId: string,
   action: string = 'analysis'
 ): Promise<{ allowed: boolean; remaining: number }> {
-  if (MAX_LIMIT === 0) {
+  if (MAX_LIMIT === 0 || process.env.NODE_ENV === 'development') {
     return {
       allowed: true,
       remaining: 999,

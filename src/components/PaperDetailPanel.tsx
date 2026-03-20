@@ -21,7 +21,7 @@ export default function PaperDetailPanel({ paper, onClose, isSeed }: PaperDetail
     <div className="flex items-center gap-2">
       {isSeed && (
         <span className="px-2 py-0.5 text-xs font-semibold bg-cyan-500/20 text-cyan-300 rounded-full">
-          Seed Paper
+          シード論文
         </span>
       )}
       {paper.venueType !== 'unknown' && (
@@ -36,27 +36,27 @@ export default function PaperDetailPanel({ paper, onClose, isSeed }: PaperDetail
       <h2 className="text-lg font-semibold text-white leading-snug">{paper.title}</h2>
 
       {/* 著者 */}
-      <SectionLabel>Authors</SectionLabel>
+      <SectionLabel>著者</SectionLabel>
       <p className="text-sm text-slate-300">{formatAuthors(paper)}</p>
 
       {/* Venue */}
       {paper.venue && (
         <>
-          <SectionLabel>Venue</SectionLabel>
+          <SectionLabel>掲載誌・会議</SectionLabel>
           <p className="text-sm text-slate-300 italic">{paper.venue}</p>
         </>
       )}
 
       {/* メトリクス */}
       <div className="grid grid-cols-2 gap-4">
-        <MetricCard label="Year" value={paper.publicationYear.toString()} />
-        <MetricCard label="Citations" value={formatNumber(paper.citationCount)} highlight />
+        <MetricCard label="出版年" value={paper.publicationYear.toString()} />
+        <MetricCard label="引用数" value={formatNumber(paper.citationCount)} highlight />
       </div>
 
       {/* Abstract */}
       {paper.abstract && (
         <>
-          <SectionLabel>Abstract</SectionLabel>
+          <SectionLabel>概要</SectionLabel>
           <p className="text-sm text-slate-300 leading-relaxed line-clamp-[10]">{paper.abstract}</p>
         </>
       )}
@@ -67,21 +67,21 @@ export default function PaperDetailPanel({ paper, onClose, isSeed }: PaperDetail
           <ExternalLink
             href={`https://arxiv.org/abs/${paper.arxivId}`}
             variant="arxiv"
-            label="View on arXiv"
+            label="arXivで表示"
           />
         )}
         {paper.doi && (
           <ExternalLink
             href={`https://doi.org/${paper.doi}`}
             variant="doi"
-            label="View DOI"
+            label="DOIを表示"
           />
         )}
         {paper.openAccessUrl && (
           <ExternalLink
             href={paper.openAccessUrl}
             variant="openaccess"
-            label="Open Access PDF"
+            label="オープンアクセス PDF"
           />
         )}
       </div>

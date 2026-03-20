@@ -53,6 +53,7 @@ export interface AnalysisProgress {
   analyzed: number;
   status: 'idle' | 'analyzing' | 'completed' | 'error';
   currentPaper?: string;
+  errorMessage?: string;
 }
 
 // OpenAlex APIレスポンスの型
@@ -133,35 +134,35 @@ export const CONTEXT_TYPE_INFO: Record<CitationContextType, {
   description: string;
 }> = {
   methodology: {
-    label: 'Methodology',
+    label: '手法',
     color: '#22c55e', // green
     bgColor: 'rgba(34, 197, 94, 0.1)',
     borderColor: 'rgba(34, 197, 94, 0.5)',
     emoji: '🟢',
-    description: 'Uses the method proposed by this paper',
+    description: 'この論文で提案された手法を利用している',
   },
   critique: {
-    label: 'Critique',
+    label: '批判',
     color: '#ef4444', // red
     bgColor: 'rgba(239, 68, 68, 0.1)',
     borderColor: 'rgba(239, 68, 68, 0.5)',
     emoji: '🔴',
-    description: 'Points out limitations or criticisms',
+    description: '限界や問題点を指摘している',
   },
   comparison: {
-    label: 'Comparison',
+    label: '比較',
     color: '#a855f7', // purple
     bgColor: 'rgba(168, 85, 247, 0.1)',
     borderColor: 'rgba(168, 85, 247, 0.5)',
     emoji: '🟣',
-    description: 'Compares results or approaches',
+    description: '結果やアプローチを比較している',
   },
   background: {
-    label: 'Background',
+    label: '背景',
     color: '#94a3b8', // slate
     bgColor: 'rgba(148, 163, 184, 0.1)',
     borderColor: 'rgba(148, 163, 184, 0.5)',
     emoji: '⚪',
-    description: 'General related work reference',
+    description: '一般的な関連研究としての参照',
   },
 };

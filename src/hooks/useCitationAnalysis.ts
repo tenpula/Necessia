@@ -318,6 +318,7 @@ export function useCitationAnalysis(
         setAnalysisProgress((prev) => ({
           ...prev,
           status: 'error',
+          errorMessage: error instanceof Error ? error.message : 'Analysis failed',
         }));
         analysisStarted.current = null;
       }

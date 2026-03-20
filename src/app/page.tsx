@@ -142,6 +142,9 @@ export default function Home() {
 
   const handleAnalysisProgressChange = (progress: AnalysisProgress) => {
     setAnalysisProgress(progress);
+    if (progress.status === 'error' && progress.errorMessage?.includes('無料枠')) {
+      setShowUsageLimitBanner(true);
+    }
   };
 
   const handleStartAnalysisReady = (startAnalysis: (requestDelay: number) => Promise<void>) => {

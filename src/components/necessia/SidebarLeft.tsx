@@ -107,19 +107,19 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
           <>
             {/* Network Statistics */}
             <div className="flex flex-col gap-1">
-              <h1 className="text-slate-900 dark:text-white text-lg font-medium leading-normal">Network Statistics</h1>
+              <h1 className="text-slate-900 dark:text-white text-lg font-medium leading-normal">ネットワーク統計</h1>
               <div className="bg-slate-50 dark:bg-[#1c1c27] rounded-lg p-3 border border-slate-200 dark:border-[#282839]">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  <span className="text-slate-500 dark:text-[#9d9db9]">Papers:</span>
+                  <span className="text-slate-500 dark:text-[#9d9db9]">論文数:</span>
                   <span className="text-slate-900 dark:text-white font-medium">{network.papers.length}</span>
-                  <span className="text-slate-500 dark:text-[#9d9db9]">Citations:</span>
+                  <span className="text-slate-500 dark:text-[#9d9db9]">引用数:</span>
                   <span className="text-slate-900 dark:text-white font-medium">{network.citations.length}</span>
                 </div>
 
                 {/* 文脈タイプ統計 */}
                 {analysisProgress?.status === 'completed' && contextStats && (
                   <div className="mt-3 pt-3 border-t border-slate-200 dark:border-[#282839]">
-                    <h4 className="text-xs text-slate-500 dark:text-[#9d9db9] uppercase tracking-wider mb-2">Context Types</h4>
+                    <h4 className="text-xs text-slate-500 dark:text-[#9d9db9] uppercase tracking-wider mb-2">文脈タイプ</h4>
                     <div className="space-y-1.5">
                       {Object.entries(contextStats).map(([type, count]) => {
                         const info = CONTEXT_TYPE_INFO[type as keyof typeof CONTEXT_TYPE_INFO];
@@ -151,14 +151,14 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
                   <div className="flex justify-between items-center">
-                    <h2 className="text-slate-900 dark:text-white text-sm font-medium leading-normal">AI Classification</h2>
+                    <h2 className="text-slate-900 dark:text-white text-sm font-medium leading-normal">AI 分類（自動化）</h2>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-[#9d9db9]">
-                    Select request rate and start AI-powered citation context analysis
+                    リクエスト間隔を選択し、AIによる引用文脈の分析を開始します
                   </p>
                   <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-800 dark:text-amber-300">
-                    <p className="font-semibold mb-1">Note:</p>
-                    <p>LLM API processing typically takes 1-3 seconds per request. The wait time between requests may be small compared to the API processing time, so the overall speed difference may not be immediately noticeable.</p>
+                    <p className="font-semibold mb-1">注意:</p>
+                    <p>LLM APIの処理には通常1リクエストあたり1〜3秒かかります。リクエスト間の待機時間はAPI処理時間に比べて短いため、全体的な速度の違いはすぐには実感できない場合があります。</p>
                   </div>
                 </div>
 
@@ -166,24 +166,24 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
                 <div className="bg-slate-50 dark:bg-[#1c1c27] rounded-lg p-3 border border-slate-200 dark:border-[#282839]">
                   <div className="flex flex-col gap-2 text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-500 dark:text-[#9d9db9]">Citations to analyze:</span>
+                      <span className="text-slate-500 dark:text-[#9d9db9]">分析対象の引用数:</span>
                       <span className="text-slate-900 dark:text-white font-medium">{citationsToAnalyze}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-500 dark:text-[#9d9db9]">Request Rate:</span>
+                      <span className="text-slate-500 dark:text-[#9d9db9]">リクエスト間隔:</span>
                       <span className="text-slate-900 dark:text-white font-medium">{requestDelay}ms</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-500 dark:text-[#9d9db9]">Actual RPM:</span>
+                      <span className="text-slate-500 dark:text-[#9d9db9]">実際のRPM:</span>
                       <span className="text-cyan-500 dark:text-cyan-400 font-bold">{actualRPM.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400 dark:text-[#9d9db9]">(Theoretical max: {theoreticalMaxRPM.toLocaleString()})</span>
+                      <span className="text-slate-400 dark:text-[#9d9db9]">(理論上の最大値: {theoreticalMaxRPM.toLocaleString()})</span>
                       <span className="text-slate-400 dark:text-[#9d9db9]">API: ~{AVERAGE_API_PROCESSING_TIME_MS / 1000}s</span>
                     </div>
                     {citationsToAnalyze > 0 && (
                       <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-[#282839]">
-                        <span className="text-slate-500 dark:text-[#9d9db9]">Estimated time:</span>
+                        <span className="text-slate-500 dark:text-[#9d9db9]">推定所要時間:</span>
                         <span className="text-slate-900 dark:text-white font-medium">
                           {estimatedTimeMinutes > 0 && `${estimatedTimeMinutes}m `}
                           {estimatedTimeSecondsRemainder}s
@@ -196,7 +196,7 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
                 {/* リクエストレート選択 - スライダー */}
                 <div className="flex flex-col gap-3">
                   <label className="text-xs text-slate-500 dark:text-[#9d9db9] uppercase tracking-wider font-bold">
-                    Request Rate
+                    リクエスト間隔 (Request Rate)
                   </label>
                   <div 
                     ref={sliderRef}
@@ -306,7 +306,7 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polygon points="5 3 19 12 5 21 5 3" />
                   </svg>
-                  <span>Start AI Classification</span>
+                  <span>AI分類を開始する</span>
                 </button>
               </div>
             )}
@@ -316,26 +316,26 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
         ) : (
           <>
             <div className="flex flex-col gap-1">
-              <h1 className="text-slate-900 dark:text-white text-lg font-medium leading-normal">Graph Controls</h1>
-              <p className="text-slate-500 dark:text-[#9d9db9] text-sm font-normal leading-normal">Configure visualization parameters</p>
+              <h1 className="text-slate-900 dark:text-white text-lg font-medium leading-normal">グラフの表示設定</h1>
+              <p className="text-slate-500 dark:text-[#9d9db9] text-sm font-normal leading-normal">可視化のパラメータを設定します</p>
             </div>
             
             <div className="flex flex-col gap-2">
               <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#282839] text-slate-700 dark:text-white transition-colors text-left">
                 <span className="material-symbols-outlined text-[20px]">filter_list</span>
-                <p className="text-sm font-medium leading-normal">Filters</p>
+                <p className="text-sm font-medium leading-normal">フィルター</p>
               </button>
               <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary text-white shadow-lg shadow-primary/20 text-left">
                 <span className="material-symbols-outlined text-[20px] fill-1">bubble_chart</span>
-                <p className="text-sm font-medium leading-normal">Clusters</p>
+                <p className="text-sm font-medium leading-normal">クラスター</p>
               </button>
               <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#282839] text-slate-700 dark:text-white transition-colors text-left">
                 <span className="material-symbols-outlined text-[20px]">history</span>
-                <p className="text-sm font-medium leading-normal">History</p>
+                <p className="text-sm font-medium leading-normal">履歴</p>
               </button>
               <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#282839] text-slate-700 dark:text-white transition-colors text-left">
                 <span className="material-symbols-outlined text-[20px]">download</span>
-                <p className="text-sm font-medium leading-normal">Export Data</p>
+                <p className="text-sm font-medium leading-normal">データ出力</p>
               </button>
             </div>
 
@@ -343,7 +343,7 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
 
             <div className="flex flex-col gap-4">
               <div className="flex justify-between items-center">
-                <p className="text-slate-900 dark:text-white text-sm font-medium leading-normal">Publication Year</p>
+                <p className="text-slate-900 dark:text-white text-sm font-medium leading-normal">出版年</p>
                 <span className="text-xs text-primary font-bold">1990 - 2024</span>
               </div>
               <div className="flex h-[38px] w-full pt-1.5 px-1">
@@ -360,7 +360,7 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
             </div>
 
             <div className="flex flex-col gap-4">
-              <p className="text-slate-900 dark:text-white text-sm font-medium leading-normal">Min. Citations</p>
+              <p className="text-slate-900 dark:text-white text-sm font-medium leading-normal">最小引用数</p>
               <div className="flex h-[20px] w-full pt-1.5 px-1">
                 <div className="relative flex h-1 w-full rounded-sm bg-slate-200 dark:bg-[#3b3b54] items-center">
                   <div className="absolute left-0 w-[40%] h-1 bg-primary rounded-sm"></div>
@@ -375,41 +375,41 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
       </div>
 
       <div className="p-4 bg-slate-50 dark:bg-[#1c1c27] border-t border-slate-200 dark:border-[#282839]">
-        <p className="text-xs text-slate-500 dark:text-[#9d9db9] mb-3 uppercase tracking-wider font-bold">Legend</p>
+        <p className="text-xs text-slate-500 dark:text-[#9d9db9] mb-3 uppercase tracking-wider font-bold">凡例（Legend）</p>
         <div className="flex flex-col gap-2">
           {hasNetwork ? (
             <>
               {/* ノードタイプ */}
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full bg-cyan-500/50 border-2 border-cyan-400"></div>
-                <span className="text-xs text-slate-700 dark:text-white">Seed Paper</span>
+                <span className="text-xs text-slate-700 dark:text-white">シード論文</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full bg-slate-600 border-2 border-slate-500"></div>
-                <span className="text-xs text-slate-700 dark:text-white">Journal</span>
+                <span className="text-xs text-slate-700 dark:text-white">ジャーナル</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-md bg-slate-600 border-2 border-slate-500"></div>
-                <span className="text-xs text-slate-700 dark:text-white">Conference</span>
+                <span className="text-xs text-slate-700 dark:text-white">カンファレンス</span>
               </div>
 
               {/* ノードの色（年代） */}
               <div className="mt-2 pt-2 border-t border-slate-200 dark:border-[#282839]">
-                <h4 className="text-xs text-slate-500 dark:text-[#9d9db9] uppercase tracking-wider mb-2">Node Color (Year)</h4>
+                <h4 className="text-xs text-slate-500 dark:text-[#9d9db9] uppercase tracking-wider mb-2">ノードの色（年代）</h4>
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
                     <div
                       className="w-4 h-4 rounded-full"
                       style={{ backgroundColor: 'hsl(180, 70%, 25%)', border: '2px solid hsl(180, 80%, 50%)' }}
                     />
-                    <span className="text-xs text-slate-700 dark:text-white">Recent (Newer)</span>
+                    <span className="text-xs text-slate-700 dark:text-white">新しい</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div
                       className="w-4 h-4 rounded-full"
                       style={{ backgroundColor: 'hsl(120, 70%, 25%)', border: '2px solid hsl(120, 80%, 50%)' }}
                     />
-                    <span className="text-xs text-slate-700 dark:text-white">Older</span>
+                    <span className="text-xs text-slate-700 dark:text-white">古い</span>
                   </div>
                 </div>
               </div>
@@ -417,14 +417,14 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
               {/* Gap Proposal ハイライト */}
               {selectedGapProposal && (
                 <div className="mt-2 pt-2 border-t border-slate-200 dark:border-[#282839]">
-                  <h4 className="text-xs text-slate-500 dark:text-[#9d9db9] uppercase tracking-wider mb-2">Research Gap</h4>
+                  <h4 className="text-xs text-slate-500 dark:text-[#9d9db9] uppercase tracking-wider mb-2">研究の空白（Gap）</h4>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded-full bg-purple-500/50 border-2 border-purple-400 animate-pulse"></div>
-                    <span className="text-xs text-slate-700 dark:text-white">Paper A</span>
+                    <span className="text-xs text-slate-700 dark:text-white">論文 A</span>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     <div className="w-4 h-4 rounded-full bg-pink-500/50 border-2 border-pink-400 animate-pulse"></div>
-                    <span className="text-xs text-slate-700 dark:text-white">Paper B</span>
+                    <span className="text-xs text-slate-700 dark:text-white">論文 B</span>
                   </div>
                 </div>
               )}
@@ -433,15 +433,15 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({
             <>
               <div className="flex items-center gap-2">
                 <div className="size-3 rounded-full bg-primary"></div>
-                <span className="text-xs text-slate-700 dark:text-white">Selected Node</span>
+                <span className="text-xs text-slate-700 dark:text-white">選択中のノード</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="size-3 rounded-full bg-purple-500"></div>
-                <span className="text-xs text-slate-700 dark:text-white">Citation &gt; 100</span>
+                <span className="text-xs text-slate-700 dark:text-white">引用数 &gt; 100</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="size-3 rounded-full bg-slate-400 dark:bg-slate-600"></div>
-                <span className="text-xs text-slate-700 dark:text-white">Standard Node</span>
+                <span className="text-xs text-slate-700 dark:text-white">通常のノード</span>
               </div>
             </>
           )}

@@ -16,6 +16,8 @@ import {
   useEdgesState,
   Node,
   ReactFlowInstance,
+  NodeChange,
+  applyNodeChanges,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -23,6 +25,7 @@ import { CitationNetwork, Paper, GapProposal, AnalysisProgress } from '@/types/p
 import { calculateLayout } from '@/lib/graph-layout';
 import { useCitationAnalysis } from '@/hooks/useCitationAnalysis';
 import PaperNode from './PaperNode';
+import OrbitNode from './OrbitNode';
 import PaperDetailPanel from './PaperDetailPanel';
 import GapProposals from './GapProposals';
 import GapDetailPanel from './GapDetailPanel';
@@ -38,6 +41,7 @@ interface CitationGraphProps {
 
 const nodeTypes = {
   paper: PaperNode,
+  orbit: OrbitNode,
 };
 
 export default function CitationGraph({ network, onAnalysisComplete, onGapProposalChange, onAnalysisProgressChange, onStartAnalysisReady, onCancelAnalysisReady }: CitationGraphProps) {
@@ -104,7 +108,40 @@ export default function CitationGraph({ network, onAnalysisComplete, onGapPropos
     [currentNetwork]
   );
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes] = useNodesState(initialNodes);
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      setNodes((nds) => {
+        const nextNodes = applyNodeChanges(changes, nds);
+        
+        return nextNodes.map((node) => {
+          // シード論文は原点から動かさない
+          if (node.data?.isSeed) {
+            return { ...node, position: { x: 0, y: 0 } };
+          }
+          // 軌道に乗っている論文（orbitRadiusが設定されている）は円周上でのみ動かせる
+          if (node.data?.orbitRadius) {
+            const r = node.data.orbitRadius as number;
+            const dx = node.position.x;
+            const dy = node.position.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            // 全く原点ピッタリに行ってしまった場合は0除算を防ぐ
+            if (dist > 0.0001) {
+              return {
+                ...node,
+                position: { x: (dx / dist) * r, y: (dy / dist) * r },
+              };
+            }
+          }
+          return node;
+        });
+      });
+    },
+    [setNodes]
+  );
+
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
   const [selectedGapProposal, setSelectedGapProposal] = useState<GapProposal | null>(null);
