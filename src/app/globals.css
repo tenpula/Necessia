@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000014;
+  --background: #000000;
   --foreground: #f1f5f9;
 }
 
@@ -21,6 +21,12 @@ body {
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.averia-gruesa-libre-regular {
+  font-family: "Averia Gruesa Libre", system-ui;
+  font-weight: 400;
+  font-style: normal;
 }
 
 /* React Flow カスタムスタイル */

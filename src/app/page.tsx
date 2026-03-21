@@ -159,11 +159,14 @@ export default function Home() {
               </div>
             ) : authStatus === 'unauthenticated' ? (
               <div className={`flex flex-col items-center justify-center min-h-full px-6 py-12 relative z-10 transition-all duration-700 ease-in-out ${isTransitioning ? 'opacity-0 scale-95 blur-[2px]' : 'opacity-100 scale-100 blur-none'}`}>
+                <h1 className="averia-gruesa-libre-regular text-6xl md:text-7xl tracking-wide text-white mb-10">
+                  Necessia
+                </h1>
                 <button
                   onClick={startLoginPopup}
-                  className="group flex items-center gap-4 px-10 py-4 bg-slate-900/90 backdrop-blur-md border border-slate-700 hover:border-slate-500 hover:bg-slate-800 text-slate-200 hover:text-white font-medium rounded-full transition-all duration-300 shadow-lg shadow-black/50 transform hover:-translate-y-0.5"
+                  className="group flex items-center gap-4 px-10 py-4 bg-neutral-900/95 backdrop-blur-md border border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 font-medium rounded-full transition-all duration-300 shadow-lg shadow-black/50 transform hover:-translate-y-0.5"
                 >
-                  <svg className="w-6 h-6 text-slate-400 group-hover:text-slate-200 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg className="w-6 h-6 text-neutral-400 group-hover:text-neutral-200 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                   </svg>
                   <span className="text-xl tracking-wider">Log in</span>
@@ -172,19 +175,12 @@ export default function Home() {
             ) : (
               <div className="flex flex-col items-center justify-center min-h-full px-6 py-12 relative animate-in fade-in zoom-in-95 duration-1000">
                 <div className="relative z-10 w-full max-w-4xl mx-auto text-center mt-6">
+                  <h1 className="averia-gruesa-libre-regular text-6xl md:text-7xl tracking-wide text-white mb-10">
+                    Necessia
+                  </h1>
                   <div>
                     <SearchForm onSearch={handleSearch} isLoading={isLoading} />
                   </div>
-
-                  {progress && (
-                    <div className="mt-8 inline-flex items-center gap-3 px-6 py-3 bg-neutral-900/80 rounded-full border border-neutral-700/70 text-neutral-300 animate-in fade-in slide-in-from-bottom-4">
-                      <svg className="animate-spin h-5 w-5 text-neutral-300" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      <span className="font-medium tracking-wide">{progress}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             )

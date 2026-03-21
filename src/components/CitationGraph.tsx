@@ -11,7 +11,6 @@ import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
   useNodesState,
   useEdgesState,
   Node,
@@ -237,20 +236,12 @@ export default function CitationGraph({ network, selectedGapProposal, onAnalysis
         nodeOrigin={[0.5, 0.5]}
         minZoom={0.1}
         maxZoom={2}
-        className="bg-slate-950"
+        className="bg-black"
         style={{ width: '100%', height: '100%' }}
         edgesFocusable={false}
       >
         <Background color="#334155" gap={30} size={1} />
         <Controls className="!bg-slate-800 !border-slate-700 !rounded-xl overflow-hidden [&>button]:!bg-slate-800 [&>button]:!border-slate-700 [&>button]:!fill-slate-300 [&>button:hover]:!bg-slate-700" />
-        <MiniMap
-          nodeColor={(node) => {
-            const nodeData = node.data as { paper: Paper; isSeed: boolean };
-            return nodeData.isSeed ? '#22d3ee' : '#64748b';
-          }}
-          maskColor="rgba(15, 23, 42, 0.8)"
-          className="!bg-slate-900 !border-slate-700 !rounded-xl"
-        />
       </ReactFlow>
 
       {/* 詳細パネル */}

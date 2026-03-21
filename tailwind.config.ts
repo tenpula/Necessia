@@ -12,7 +12,7 @@ const config: Config = {
       colors: {
         primary: "#1111d4",
         "background-light": "#f6f6f8",
-        "background-dark": "#000033", // Changed from #101022
+        "background-dark": "#000000",
       },
       fontFamily: {
         sans: ["Open Sans", "sans-serif"], // Added Open Sans

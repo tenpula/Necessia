@@ -21,7 +21,7 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ onBack, remainingUsage, usageLimit }) => {
   return (
-    <header className="flex flex-none items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-[#282839] bg-white dark:bg-[#111118] px-6 py-3 z-50">
+    <header className="flex flex-none items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-[#282839] bg-white dark:bg-black px-6 py-3 z-50">
       <div className="flex items-center gap-8">
         <div className="flex items-center gap-4 text-slate-900 dark:text-white cursor-pointer" onClick={onBack}>
           <div className="text-primary">
