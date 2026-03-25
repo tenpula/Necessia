@@ -14,7 +14,7 @@ export default function StarryBackground() {
 
     // 星のデータを保持する配列
     const stars: { x: number; y: number; radius: number; opacity: number }[] = [];
-    const numStars = 150; // 視認性を保ったまま約50%減らす
+    const numStars = 75; // 星の数をさらに50%減らす
 
     const resizeAndDraw = () => {
       // 親コンテナ（またはウィンドウ）に合わせる
@@ -32,17 +32,8 @@ export default function StarryBackground() {
         });
       }
 
-      // 描画: 黒に少し白さを足した深みのあるグラデーション
-      // 画面中央から外側へ向かうグラデーション
-      const gradient = ctx.createRadialGradient(
-        canvas.width / 2, canvas.height / 2, 0,
-        canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height) / 1.5
-      );
-      gradient.addColorStop(0, '#1a1a1a'); // 中心部分は少し白っぽさを足した黒（ダークグレー）
-      gradient.addColorStop(0.5, '#0a0a0a'); 
-      gradient.addColorStop(1, '#000000'); // 外周は純粋な黒
-
-      ctx.fillStyle = gradient;
+      // 描画: 完全な黒（グラデーションなし）
+      ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // 星を描画（動かさない）

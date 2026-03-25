@@ -135,33 +135,33 @@ export const CONTEXT_TYPE_INFO: Record<CitationContextType, {
 }> = {
   methodology: {
     label: '手法',
-    color: '#22c55e', // green
-    bgColor: 'rgba(34, 197, 94, 0.1)',
-    borderColor: 'rgba(34, 197, 94, 0.5)',
+    color: '#387d39',
+    bgColor: 'rgba(56, 125, 57, 0.1)',
+    borderColor: 'rgba(56, 125, 57, 0.5)',
     emoji: '🟢',
     description: 'この論文で提案された手法を利用している',
   },
   critique: {
     label: '批判',
-    color: '#ef4444', // red
-    bgColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.5)',
-    emoji: '🔴',
+    color: '#bc611e',
+    bgColor: 'rgba(188, 97, 30, 0.1)',
+    borderColor: 'rgba(188, 97, 30, 0.5)',
+    emoji: '🟠',
     description: '限界や問題点を指摘している',
   },
   comparison: {
     label: '比較',
-    color: '#a855f7', // purple
-    bgColor: 'rgba(168, 85, 247, 0.1)',
-    borderColor: 'rgba(168, 85, 247, 0.5)',
-    emoji: '🟣',
+    color: '#fac559',
+    bgColor: 'rgba(250, 197, 89, 0.1)',
+    borderColor: 'rgba(250, 197, 89, 0.5)',
+    emoji: '🟡',
     description: '結果やアプローチを比較している',
   },
   background: {
     label: '背景',
-    color: '#94a3b8', // slate
-    bgColor: 'rgba(148, 163, 184, 0.1)',
-    borderColor: 'rgba(148, 163, 184, 0.5)',
+    color: '#e6eae6',
+    bgColor: 'rgba(230, 234, 230, 0.1)',
+    borderColor: 'rgba(230, 234, 230, 0.5)',
     emoji: '⚪',
     description: '一般的な関連研究としての参照',
   },

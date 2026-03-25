@@ -110,30 +110,66 @@ export default function CitationGraph({ network, selectedGapProposal, onAnalysis
 
   const [nodes, setNodes] = useNodesState(initialNodes);
 
+  // ドラッグ中のノードIDを追跡
+  const draggingNodeId = useRef<string | null>(null);
+  // スナップ距離の閾値（px）
+  const SNAP_THRESHOLD = 80;
+
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       setNodes((nds) => {
         const nextNodes = applyNodeChanges(changes, nds);
         
-        return nextNodes.map((node) => {
-          // シード論文は原点から動かさない
+        // 軌道のドラッグによるリサイズ処理
+        const orbitChanges = changes.filter(c => c.type === 'position' && c.id.startsWith('orbit-')) as { id: string; position: {x: number, y: number} }[];
+        
+        let processedNodes = nextNodes;
+
+        if (orbitChanges.length > 0) {
+          orbitChanges.forEach(change => {
+            const newPos = change.position;
+            const newRadius = Math.sqrt(newPos.x * newPos.x + newPos.y * newPos.y);
+            const orbitId = change.id;
+            const category = orbitId.replace('orbit-', '');
+
+            processedNodes = processedNodes.map(node => {
+              if (node.id === orbitId) {
+                return {
+                  ...node,
+                  position: { x: 0, y: 0 },
+                  data: { ...node.data, radius: newRadius }
+                };
+              }
+              // 軌道リサイズ時、ドラッグ中でないノードのみ追従
+              if (node.type === 'paper' && node.data?.category === category && node.id !== draggingNodeId.current) {
+                const currentX = node.position.x;
+                const currentY = node.position.y;
+                const currentR = Math.sqrt(currentX * currentX + currentY * currentY);
+                
+                if (currentR > 0.0001) {
+                  return {
+                    ...node,
+                    position: { 
+                      x: (currentX / currentR) * newRadius, 
+                      y: (currentY / currentR) * newRadius 
+                    },
+                    data: { ...node.data, orbitRadius: newRadius }
+                  };
+                }
+              }
+              return node;
+            });
+          });
+        }
+
+        return processedNodes.map((node) => {
+          // シード論文は中心固定
           if (node.data?.isSeed) {
             return { ...node, position: { x: 0, y: 0 } };
           }
-          // 軌道に乗っている論文（orbitRadiusが設定されている）は円周上でのみ動かせる
-          if (node.data?.orbitRadius) {
-            const r = node.data.orbitRadius as number;
-            const dx = node.position.x;
-            const dy = node.position.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            
-            // 全く原点ピッタリに行ってしまった場合は0除算を防ぐ
-            if (dist > 0.0001) {
-              return {
-                ...node,
-                position: { x: (dx / dist) * r, y: (dy / dist) * r },
-              };
-            }
+          // ドラッグ中のノードは自由移動を許可（軌道拘束しない）
+          if (draggingNodeId.current === node.id) {
+            return node;
           }
           return node;
         });
@@ -141,6 +177,65 @@ export default function CitationGraph({ network, selectedGapProposal, onAnalysis
     },
     [setNodes]
   );
+
+  // ドラッグ開始: ノードIDを記録
+  const onNodeDragStart = useCallback((_event: React.MouseEvent, node: Node) => {
+    if (node.type === 'paper' && !node.data?.isSeed) {
+      draggingNodeId.current = node.id;
+    }
+  }, []);
+
+  // ドラッグ終了: 磁石スナップ判定
+  const onNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
+    draggingNodeId.current = null;
+
+    if (node.type !== 'paper' || node.data?.isSeed) return;
+
+    const nodeCategory = node.data?.category as string | undefined;
+    const dx = node.position.x;
+    const dy = node.position.y;
+    const distFromCenter = Math.sqrt(dx * dx + dy * dy);
+
+    // すべての軌道との距離を計算し、最も近い軌道を見つける
+    setNodes((nds) => {
+      const orbitNodes = nds.filter(n => n.type === 'orbit');
+      let bestOrbit: { category: string; radius: number; distance: number } | null = null;
+
+      orbitNodes.forEach(orbitNode => {
+        const orbitRadius = orbitNode.data?.radius as number;
+        const orbitCategory = orbitNode.data?.category as string;
+        const distance = Math.abs(distFromCenter - orbitRadius);
+
+        // このカテゴリの軌道のみスナップ対象（分類済みの場合）
+        // 未分類ノードはどの軌道にもスナップしない
+        if (nodeCategory && orbitCategory === nodeCategory && distance < SNAP_THRESHOLD) {
+          if (!bestOrbit || distance < bestOrbit.distance) {
+            bestOrbit = { category: orbitCategory, radius: orbitRadius, distance };
+          }
+        }
+      });
+
+      if (bestOrbit && distFromCenter > 0.0001) {
+        const snapRadius = (bestOrbit as { category: string; radius: number; distance: number }).radius;
+        // 現在の角度を保持したまま、軌道の円周上にスナップ
+        return nds.map(n => {
+          if (n.id === node.id) {
+            return {
+              ...n,
+              position: {
+                x: (dx / distFromCenter) * snapRadius,
+                y: (dy / distFromCenter) * snapRadius,
+              },
+              data: { ...n.data, orbitRadius: snapRadius },
+            };
+          }
+          return n;
+        });
+      }
+
+      return nds;
+    });
+  }, [setNodes, SNAP_THRESHOLD]);
 
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
@@ -230,17 +325,19 @@ export default function CitationGraph({ network, selectedGapProposal, onAnalysis
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onNodeDragStart={onNodeDragStart}
+        onNodeDragStop={onNodeDragStop}
         onPaneClick={onPaneClick}
         onInit={onInit}
         nodeTypes={nodeTypes}
         nodeOrigin={[0.5, 0.5]}
         minZoom={0.1}
         maxZoom={2}
-        className="bg-black"
+        className="bg-transparent"
         style={{ width: '100%', height: '100%' }}
         edgesFocusable={false}
       >
-        <Background color="#334155" gap={30} size={1} />
+        <Background color="transparent" />
         <Controls className="!bg-slate-800 !border-slate-700 !rounded-xl overflow-hidden [&>button]:!bg-slate-800 [&>button]:!border-slate-700 [&>button]:!fill-slate-300 [&>button:hover]:!bg-slate-700" />
       </ReactFlow>
 

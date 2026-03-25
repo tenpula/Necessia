@@ -22,7 +22,7 @@ import { CitationNetwork, Paper, Citation, CONTEXT_TYPE_INFO } from '@/types/pap
  * - critique: 批判的検討
  */
 export function getEdgeColor(citation: Citation): string {
-  if (citation.contextType && citation.contextType !== 'background') {
+  if (citation.contextType) {
     return CONTEXT_TYPE_INFO[citation.contextType].color;
   }
   // アナライズ前はグレイの単色
@@ -67,12 +67,22 @@ export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edge
 
   const nodes: Node[] = [];
 
+  // 出版年の最小・最大を計算（相対的な色割り当て用）
+  let minYear = seedPaper.publicationYear;
+  let maxYear = seedPaper.publicationYear;
+  otherPapers.forEach(p => {
+    if (p.publicationYear < minYear) minYear = p.publicationYear;
+    if (p.publicationYear > maxYear) maxYear = p.publicationYear;
+  });
+  const yearRange = Math.max(1, maxYear - minYear);
+  const getYearRatio = (year: number) => Math.max(0, Math.min(1, (year - minYear) / yearRange));
+
   // Seed論文を中心に配置
   nodes.push({
     id: seedPaper.id,
     type: 'paper',
     position: { x: 0, y: 0 },
-    data: { paper: seedPaper, isSeed: true },
+    data: { paper: seedPaper, isSeed: true, yearRatio: getYearRatio(seedPaper.publicationYear) },
     draggable: false, // シード論文は動かないように固定
   });
 
@@ -152,7 +162,13 @@ export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edge
           x: Math.cos(theta) * r,
           y: Math.sin(theta) * r
         },
-        data: { paper, isSeed: false, orbitRadius: r }, // 軌道半径を記録しておく（ドラッグ制約用）
+        data: { 
+          paper, 
+          isSeed: false, 
+          orbitRadius: r,
+          category: ctg,
+          yearRatio: getYearRatio(paper.publicationYear)
+        }, // 軌道半径、カテゴリ、年代割合を記録
         zIndex: 5,
       });
     });
@@ -183,7 +199,7 @@ export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edge
           x: Math.cos(theta) * r,
           y: Math.sin(theta) * r
         },
-        data: { paper, isSeed: false }, // 未分類は軌道に乗らない
+        data: { paper, isSeed: false, yearRatio: getYearRatio(paper.publicationYear) }, // 未分類は軌道に乗らない
         zIndex: 5,
       });
     });
@@ -213,7 +229,7 @@ export function calculateLayout(network: CitationNetwork): { nodes: Node[]; edge
       selectable: false,
       style: {
         stroke: color,
-        strokeWidth: isClassified ? 2 : 1,
+        strokeWidth: isClassified ? 6 : 2,
         opacity: isClassified ? 0.6 : 0.15, // 分類済みは目立つように、未分類はうっすら
         cursor: 'default',
       },

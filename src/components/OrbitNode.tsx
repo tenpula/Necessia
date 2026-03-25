@@ -34,22 +34,13 @@ function OrbitNode({ data }: NodeProps) {
         height: diameter,
       }}
     >
-      {/* グロー効果用の背景レイヤー */}
+      {/* メインの軌道リング（実線の太線） */}
       <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          boxShadow: `0 0 22px ${color}55`,
-          opacity: 0.3,
-        }}
-      />
-
-      {/* メインの軌道リング */}
-      <div
-        className="absolute inset-0 rounded-full border-[2px]"
+        className="absolute inset-0 rounded-full border-[3px]"
         style={{
           borderColor: color,
-          opacity: 0.75,
-          boxShadow: `0 0 14px ${color}55, inset 0 0 14px ${color}22`,
+          opacity: 0.6,
+          pointerEvents: 'none',
         }}
       />
 

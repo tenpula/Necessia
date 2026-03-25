@@ -32,6 +32,13 @@ body {
 /* React Flow カスタムスタイル */
 .react-flow__node {
   cursor: pointer;
+  /* 滑らかな加速度付きの動き（スナップ時にイージングが効く） */
+  transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1.0) !important;
+}
+
+/* ドラッグ中はtransitionを無効化（直接追従させる） */
+.react-flow__node.dragging {
+  transition: none !important;
 }
 
 .react-flow__edge {

@@ -8,35 +8,34 @@
 
 import { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Paper } from '@/types/paper';
+import { Paper, CONTEXT_TYPE_INFO } from '@/types/paper';
 import { formatAuthorsShort, formatNumber } from '@/lib/format';
 
 interface PaperNodeData extends Record<string, unknown> {
   paper: Paper;
   isSeed: boolean;
   gapRole?: 'paperA' | 'paperB' | null;
+  yearRatio?: number; // 最小0〜最大1の年代割合
+  category?: string; // カテゴリ情報
 }
 
 function PaperNode({ data }: NodeProps) {
   const nodeData = data as PaperNodeData;
-  const { paper, isSeed, gapRole } = nodeData;
+  const { paper, isSeed, gapRole, yearRatio = 0 } = nodeData;
 
-  // 出版年に基づく色を計算
-  const currentYear = new Date().getFullYear();
-  const age = currentYear - paper.publicationYear;
-  const hue = Math.max(180 - age * 15, 60);
-
-  // 被引用数に基づくサイズ
+  // サイズ計算
+  // シード論文は、年代ベースの最大サイズ(120)より一回り大きい140に固定
   const baseSize = 60;
-  const maxSize = 140;
-  const sizeMultiplier = Math.min(Math.log10(paper.citationCount + 1) / 4, 1);
-  const nodeSize = baseSize + (maxSize - baseSize) * sizeMultiplier;
+  const maxSize = 120;
+  const nodeSize = isSeed 
+    ? 280 
+    : baseSize + (maxSize - baseSize) * yearRatio;
 
   // Venue Typeに基づく形状のクラス
   const shapeClass = paper.venueType === 'conference' ? 'rounded-lg' : 'rounded-full';
 
   // スタイル計算
-  const { backgroundColor, borderStyle, boxShadow } = getNodeStyles(gapRole, hue, isSeed);
+  const { backgroundColor, borderStyle, boxShadow, textColor, subTextColor } = getNodeStyles(gapRole, isSeed, nodeData.category);
 
   return (
     <>
@@ -44,11 +43,11 @@ function PaperNode({ data }: NodeProps) {
       <div
         className={`relative flex flex-col items-center justify-center p-3 
                    cursor-pointer transition-all duration-200
-                   hover:scale-110 hover:z-10 group
+                   hover:scale-105 hover:z-10 group
                    ${shapeClass}
-                   ${isSeed ? 'ring-4 ring-neutral-500 ring-opacity-60' : ''}
-                   ${gapRole === 'paperA' ? 'ring-4 ring-purple-500 ring-opacity-80 animate-pulse' : ''}
-                   ${gapRole === 'paperB' ? 'ring-4 ring-pink-500 ring-opacity-80 animate-pulse' : ''}`}
+                   ${isSeed ? 'ring-2 ring-offset-2 ring-[#ea553a] ring-offset-[#000000]' : ''}
+                   ${gapRole === 'paperA' ? 'ring-2 ring-offset-2 ring-purple-600 ring-offset-[#000000]' : ''}
+                   ${gapRole === 'paperB' ? 'ring-2 ring-offset-2 ring-pink-600 ring-offset-[#000000]' : ''}`}
         style={{
           width: nodeSize,
           height: nodeSize,
@@ -60,11 +59,11 @@ function PaperNode({ data }: NodeProps) {
         {/* Gap Role ラベル */}
         {gapRole && <GapRoleLabel role={gapRole} />}
 
-        <span className="text-[10px] font-bold text-white/90 text-center line-clamp-2 leading-tight px-1">
+        <span className="text-[10px] font-bold text-center line-clamp-2 leading-tight px-1" style={{ color: textColor }}>
           {paper.title.length > 50 ? paper.title.substring(0, 50) + '...' : paper.title}
         </span>
 
-        <span className="text-[8px] text-white/60 mt-1">{paper.publicationYear}</span>
+        <span className="text-[8px] mt-1" style={{ color: subTextColor }}>{paper.publicationYear}</span>
 
         {/* ホバー時のツールチップ */}
         <NodeTooltip paper={paper} />
@@ -76,29 +75,69 @@ function PaperNode({ data }: NodeProps) {
 // スタイル計算関数
 function getNodeStyles(
   gapRole: 'paperA' | 'paperB' | null | undefined,
-  hue: number,
-  isSeed: boolean
+  isSeed: boolean,
+  category?: string
 ) {
+  // シード論文（使用ノード）の固定色
+  if (isSeed) {
+    return {
+      backgroundColor: '#ea553a',
+      borderStyle: '2px solid rgba(0, 0, 0, 0.2)',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.4)',
+      textColor: 'rgba(255, 255, 255, 0.95)',
+      subTextColor: 'rgba(255, 255, 255, 0.7)',
+    };
+  }
+
   if (gapRole === 'paperA') {
     return {
-      backgroundColor: 'hsla(270, 70%, 30%, 0.95)',
-      borderStyle: '3px solid hsl(270, 80%, 60%)',
-      boxShadow: '0 0 40px rgba(168, 85, 247, 0.6), 0 0 20px rgba(168, 85, 247, 0.4)',
+      backgroundColor: 'hsl(270, 20%, 40%)', // マットな紫
+      borderStyle: '2px solid hsl(270, 30%, 30%)',
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+      textColor: 'rgba(255, 255, 255, 0.9)',
+      subTextColor: 'rgba(255, 255, 255, 0.6)',
     };
   }
   if (gapRole === 'paperB') {
     return {
-      backgroundColor: 'hsla(330, 70%, 30%, 0.95)',
-      borderStyle: '3px solid hsl(330, 80%, 60%)',
-      boxShadow: '0 0 40px rgba(236, 72, 153, 0.6), 0 0 20px rgba(236, 72, 153, 0.4)',
+      backgroundColor: 'hsl(330, 20%, 40%)', // マットなピンク
+      borderStyle: '2px solid hsl(330, 30%, 30%)',
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+      textColor: 'rgba(255, 255, 255, 0.9)',
+      subTextColor: 'rgba(255, 255, 255, 0.6)',
     };
   }
+
+  // 基本色: 分類前は既定の青系、分類後はカテゴリ色
+  let baseColor = '#4753a2';
+  if (category && (category === 'methodology' || category === 'critique' || category === 'comparison' || category === 'background')) {
+    const categoryInfo = CONTEXT_TYPE_INFO[category as keyof typeof CONTEXT_TYPE_INFO];
+    if (categoryInfo) {
+      baseColor = categoryInfo.color;
+    }
+  }
+
+  // テキスト色の決定（簡易的な輝度判定）
+  const isDark = (color: string) => {
+    if (color.startsWith('#')) {
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      return (r * 0.299 + g * 0.587 + b * 0.114) < 160;
+    }
+    return true;
+  };
+
+  const dark = isDark(baseColor);
+  const textColor = dark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.85)';
+  const subTextColor = dark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)';
+
   return {
-    backgroundColor: `hsla(${hue}, 70%, 25%, 0.9)`,
-    borderStyle: `2px solid hsla(${hue}, 80%, 50%, 0.8)`,
-    boxShadow: isSeed
-      ? '0 0 30px rgba(34, 211, 238, 0.4)'
-      : `0 4px 20px hsla(${hue}, 70%, 20%, 0.5)`,
+    backgroundColor: baseColor,
+    borderStyle: `2px solid rgba(0, 0, 0, 0.1)`,
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)', // マットな影
+    textColor,
+    subTextColor,
   };
 }
 
