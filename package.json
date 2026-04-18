@@ -1,5 +1,5 @@
 {
-  "name": "temp-app",
+  "name": "necessia",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -13,6 +13,7 @@
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.19.2",
     "@xyflow/react": "^12.10.0",
+    "d3-force": "^3.0.0",
     "next": "16.0.10",
     "next-auth": "^5.0.0-beta.30",
     "openai": "^6.14.0",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/d3-force": "^3.0.10",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

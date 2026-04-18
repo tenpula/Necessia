@@ -15,9 +15,9 @@ const config: Config = {
         "background-dark": "#000000",
       },
       fontFamily: {
-        sans: ["Open Sans", "sans-serif"], // Added Open Sans
-        display: ["Space Grotesk", "sans-serif"],
-        body: ["Open Sans", "sans-serif"], // Changed to Open Sans
+        sans: ['Open Sans', 'sans-serif'],
+        display: ['Space Grotesk', 'sans-serif'],
+        body: ['Open Sans', 'sans-serif'],
       },
       borderRadius: {
         DEFAULT: "0.25rem",

@@ -18,8 +18,21 @@ import {
   OpenAlexWork,
   OpenAlexSearchResponse,
 } from '@/types/paper';
+import {
+  buildOpenAlexUrl,
+  buildOpenAlexWorkLookupUrl,
+  convertToPaper,
+  extractArxivId,
+  extractDoi,
+  normalizeOpenAlexId,
+} from '@/lib/openalex-helpers';
+import { getExponentialBackoffDelay, sleep } from '@/lib/async-utils';
 
-const OPENALEX_BASE_URL = 'https://api.openalex.org';
+export { extractArxivId, extractDoi } from '@/lib/openalex-helpers';
+
+function isFormatLookupMiss(error: unknown): boolean {
+  return error instanceof Error && error.message === 'OpenAlex format lookup miss';
+}
 
 /**
  * レート制限管理クラス
@@ -68,13 +81,13 @@ class RateLimiter {
     
     // 1秒あたりの制限チェック
     const oneSecondAgo = now - 1000;
-    this.requestTimestamps = this.requestTimestamps.filter(ts => ts > oneSecondAgo);
-    
+    this.requestTimestamps = this.requestTimestamps.filter((ts) => ts > oneSecondAgo);
+
     if (this.requestTimestamps.length >= this.requestsPerSecond) {
       const oldestRequest = this.requestTimestamps[0];
       const waitTime = oldestRequest + 1000 - now;
       if (waitTime > 0) {
-        await this.sleep(waitTime);
+        await sleep(waitTime);
       }
     }
     
@@ -82,7 +95,7 @@ class RateLimiter {
     const timeSinceLastRequest = now - this.lastRequestTime;
     if (timeSinceLastRequest < this.minRequestInterval) {
       const waitTime = this.minRequestInterval - timeSinceLastRequest;
-      await this.sleep(waitTime);
+      await sleep(waitTime);
     }
     
     // リクエストを記録
@@ -91,11 +104,7 @@ class RateLimiter {
     this.dailyRequestCount++;
   }
 
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  async makeRequest<T>(url: string, options?: RequestInit): Promise<Response> {
+  async makeRequest(url: string, options?: RequestInit): Promise<Response> {
     await this.waitForRateLimit();
     
     const maxRetries = 3;
@@ -116,10 +125,10 @@ class RateLimiter {
           const retryAfter = response.headers.get('Retry-After');
           const waitTime = retryAfter 
             ? parseInt(retryAfter) * 1000 
-            : Math.min(1000 * Math.pow(2, retryCount), 10000); // 最大10秒
+            : getExponentialBackoffDelay(retryCount, 1000, 10000);
           
           console.warn(`Rate limit hit. Retrying after ${waitTime}ms (attempt ${retryCount}/${maxRetries})`);
-          await this.sleep(waitTime);
+          await sleep(waitTime);
           continue;
         }
         
@@ -128,9 +137,9 @@ class RateLimiter {
         // ネットワークエラーの場合もリトライ
         if (retryCount < maxRetries - 1) {
           retryCount++;
-          const waitTime = Math.min(1000 * Math.pow(2, retryCount), 10000);
+          const waitTime = getExponentialBackoffDelay(retryCount, 1000, 10000);
           console.warn(`Request failed. Retrying after ${waitTime}ms (attempt ${retryCount}/${maxRetries})`);
-          await this.sleep(waitTime);
+          await sleep(waitTime);
           continue;
         }
         throw error;
@@ -144,200 +153,52 @@ class RateLimiter {
 // シングルトンインスタンス
 const rateLimiter = new RateLimiter();
 
-// 環境変数からメールアドレスを取得（なければデフォルト値を使用）
-const getMailtoParam = (): string => {
-  const email = process.env.OPENALEX_EMAIL || 'your-email@example.com';
-  return `mailto=${encodeURIComponent(email)}`;
-};
-
-/**
- * arXiv URLやID文字列から正規化されたarXiv IDを抽出します。
- * 様々な形式（URL, pdf URL, "arXiv:"プレフィックス付きなど）に対応しています。
- * 
- * @param input ユーザー入力文字列
- * @returns 正規化されたarXiv ID (例: "1706.03762") または null
- */
-export function extractArxivId(input: string): string | null {
-  // arXiv URL patterns:
-  // https://arxiv.org/abs/2301.00234
-  // https://arxiv.org/abs/2301.00234v1
-  // https://arxiv.org/pdf/2301.00234.pdf
-  // arXiv:2301.00234
-  // 2301.00234
-  // 古い形式: math.GT/0309136 (2007年以前)
-  
-  const patterns = [
-    // 新しい形式（2007年以降）: YYYY.NNNNN
-    /arxiv\.org\/abs\/(\d{4}\.\d{4,5}(?:v\d+)?)/i,
-    /arxiv\.org\/pdf\/(\d{4}\.\d{4,5}(?:v\d+)?)\.pdf/i,
-    /arXiv:(\d{4}\.\d{4,5}(?:v\d+)?)/i,
-    /^(\d{4}\.\d{4,5}(?:v\d+)?)$/,
-    // 古い形式（2007年以前）: category/YYMM.number
-    /arxiv\.org\/abs\/([a-z-]+\/\d{7})/i,
-    /arXiv:([a-z-]+\/\d{7})/i,
-    /^([a-z-]+\/\d{7})$/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = input.match(pattern);
-    if (match) {
-      let arxivId = match[1];
-      // バージョン番号を削除（新しい形式のみ）
-      if (arxivId.match(/^\d{4}\./)) {
-        arxivId = arxivId.replace(/v\d+$/, '');
-      }
-      return arxivId;
-    }
-  }
-
-  return null;
-}
-
-/**
- * DOI文字列やURLから正規化されたDOIを抽出します。
- * 
- * @param input ユーザー入力文字列
- * @returns 正規化されたDOI (例: "10.1234/example") または null
- */
-export function extractDoi(input: string): string | null {
-  // DOI patterns:
-  // https://doi.org/10.1234/example
-  // doi:10.1234/example
-  // 10.1234/example
-  
-  const patterns = [
-    /doi\.org\/(10\.\d{4,}\/[^\s]+)/i,
-    /doi:(10\.\d{4,}\/[^\s]+)/i,
-    /^(10\.\d{4,}\/[^\s]+)$/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = input.match(pattern);
-    if (match) {
-      return match[1];
-    }
-  }
-
-  return null;
-}
-
-// OpenAlexのWorkデータをPaperに変換
-function convertToPaper(work: OpenAlexWork): Paper {
-  const venueType = determineVenueType(work);
-  
-  return {
-    id: work.id,
-    openAlexId: work.ids.openalex || work.id,
-    title: work.display_name || work.title,
-    authors: work.authorships.map((a) => ({
-      name: a.author.display_name,
-      orcid: a.author.orcid,
-    })),
-    publicationYear: work.publication_year,
-    publicationDate: work.publication_date,
-    venue: work.primary_location?.source?.display_name || work.host_venue?.display_name,
-    venueType,
-    citationCount: work.cited_by_count,
-    arxivId: work.ids.arxiv?.replace('https://arxiv.org/abs/', ''),
-    doi: work.ids.doi?.replace('https://doi.org/', ''),
-    abstract: reconstructAbstract(work.abstract_inverted_index),
-    openAccessUrl: work.open_access?.oa_url,
-  };
-}
-
-// Venue Type の判定
-function determineVenueType(work: OpenAlexWork): Paper['venueType'] {
-  const sourceType = work.primary_location?.source?.type || work.host_venue?.type || work.type;
-  
-  if (!sourceType) return 'unknown';
-  
-  const type = sourceType.toLowerCase();
-  
-  if (type.includes('journal') || type === 'article') {
-    return 'journal';
-  }
-  if (type.includes('conference') || type.includes('proceedings')) {
-    return 'conference';
-  }
-  if (type.includes('preprint') || type.includes('repository')) {
-    return 'preprint';
-  }
-  
-  return 'unknown';
-}
-
-// 逆インデックスからアブストラクトを再構築
-function reconstructAbstract(invertedIndex?: Record<string, number[]>): string | undefined {
-  if (!invertedIndex) return undefined;
-  
-  const words: [string, number][] = [];
-  
-  for (const [word, positions] of Object.entries(invertedIndex)) {
-    for (const pos of positions) {
-      words.push([word, pos]);
-    }
-  }
-  
-  words.sort((a, b) => a[1] - b[1]);
-  return words.map((w) => w[0]).join(' ');
-}
-
 // arXiv IDで論文を検索
 export async function searchByArxivId(arxivId: string): Promise<Paper | null> {
   try {
-    // OpenAlex APIでは、arXiv IDは複数の形式で試す必要がある
-    // 形式1: ids.arxiv:1706.03762
-    // 形式2: ids.arxiv:arXiv:1706.03762
-    // 形式3: 直接URLで検索
-    
+    const canonicalArxivDoi = `10.48550/arXiv.${arxivId}`;
+    const doiMatch = await searchByDoi(canonicalArxivDoi);
+    if (doiMatch) {
+      return doiMatch;
+    }
+
+    // OpenAlex 側の arXiv 取り扱いには揺れがあるため、
+    // DOI で引けない場合のみ filter 形式を試す。
     const formats = [
-      `ids.arxiv:${arxivId}`,  // 標準形式
-      `ids.arxiv:arXiv:${arxivId}`,  // arXiv:プレフィックス付き
-      `https://arxiv.org/abs/${arxivId}`,  // URL形式
+      `ids.arxiv:${arxivId}`,
+      `ids.arxiv:arXiv:${arxivId}`,
     ];
     
     for (const format of formats) {
       try {
-        let url: string;
-        if (format.startsWith('http')) {
-          // URL形式の場合は直接取得
-          url = `${OPENALEX_BASE_URL}/works/${format}?${getMailtoParam()}`;
-        } else {
-          // フィルター形式
-          url = `${OPENALEX_BASE_URL}/works?filter=${format}&${getMailtoParam()}`;
-        }
-        
+        const url = format.startsWith('http')
+          ? buildOpenAlexWorkLookupUrl(format)
+          : buildOpenAlexUrl('/works', [`filter=${format}`]);
+
         const response = await rateLimiter.makeRequest(url);
         
         if (!response.ok) {
-          // 404の場合は次の形式を試す
-          if (response.status === 404) {
-            continue;
+          if (response.status === 400 || response.status === 404) {
+            throw new Error('OpenAlex format lookup miss');
           }
           throw new Error(`OpenAlex API error: ${response.status}`);
         }
         
-        let data: OpenAlexWork | OpenAlexSearchResponse;
-        if (format.startsWith('http')) {
-          // URL形式の場合は単一オブジェクト
-          data = await response.json() as OpenAlexWork;
-          return convertToPaper(data);
-        } else {
-          // フィルター形式の場合は配列
-          data = await response.json() as OpenAlexSearchResponse;
-          if (data.results && data.results.length > 0) {
-            return convertToPaper(data.results[0]);
-          }
+        const data = await response.json() as OpenAlexSearchResponse;
+        if (data.results && data.results.length > 0) {
+          return convertToPaper(data.results[0]);
         }
       } catch (formatError) {
-        // この形式が失敗した場合は次の形式を試す
+        if (!isFormatLookupMiss(formatError)) {
+          throw formatError;
+        }
         console.warn(`Failed to search with format ${format}:`, formatError);
         continue;
       }
     }
     
-    // すべての形式が失敗した場合
     return null;
+    
   } catch (error) {
     console.error('Error searching by arXiv ID:', error);
     throw error;
@@ -347,7 +208,7 @@ export async function searchByArxivId(arxivId: string): Promise<Paper | null> {
 // DOIで論文を検索
 export async function searchByDoi(doi: string): Promise<Paper | null> {
   try {
-    const url = `${OPENALEX_BASE_URL}/works/https://doi.org/${doi}?${getMailtoParam()}`;
+    const url = buildOpenAlexWorkLookupUrl(`https://doi.org/${doi}`);
     const response = await rateLimiter.makeRequest(url);
     
     if (!response.ok) {
@@ -369,7 +230,7 @@ export async function searchByDoi(doi: string): Promise<Paper | null> {
 export async function searchByTitle(title: string): Promise<Paper[]> {
   try {
     const encodedTitle = encodeURIComponent(title);
-    const url = `${OPENALEX_BASE_URL}/works?search=${encodedTitle}&per_page=10&${getMailtoParam()}`;
+    const url = buildOpenAlexUrl('/works', [`search=${encodedTitle}`, 'per_page=10']);
     const response = await rateLimiter.makeRequest(url);
     
     if (!response.ok) {
@@ -387,7 +248,7 @@ export async function searchByTitle(title: string): Promise<Paper[]> {
 // OpenAlex IDから論文を取得
 export async function getWorkById(openAlexId: string): Promise<Paper | null> {
   try {
-    const url = `${OPENALEX_BASE_URL}/works/${openAlexId}?${getMailtoParam()}`;
+    const url = buildOpenAlexUrl(`/works/${openAlexId}`);
     const response = await rateLimiter.makeRequest(url);
     
     if (!response.ok) {
@@ -408,8 +269,7 @@ export async function getWorkById(openAlexId: string): Promise<Paper | null> {
 // 論文の引用リスト（この論文が引用している論文）を取得
 export async function getReferences(openAlexId: string): Promise<Paper[]> {
   try {
-    // まず対象論文の詳細を取得
-    const url = `${OPENALEX_BASE_URL}/works/${openAlexId}?${getMailtoParam()}`;
+    const url = buildOpenAlexUrl(`/works/${openAlexId}`);
     const response = await rateLimiter.makeRequest(url);
     
     if (!response.ok) {
@@ -430,9 +290,11 @@ export async function getReferences(openAlexId: string): Promise<Paper[]> {
     
     for (let i = 0; i < referencedWorkIds.length; i += batchSize) {
       const batch = referencedWorkIds.slice(i, i + batchSize);
-      const idsFilter = batch.map(id => id.replace('https://openalex.org/', '')).join('|');
-      
-      const batchUrl = `${OPENALEX_BASE_URL}/works?filter=ids.openalex:${idsFilter}&per_page=${batchSize}&${getMailtoParam()}`;
+      const idsFilter = batch.map(normalizeOpenAlexId).join('|');
+      const batchUrl = buildOpenAlexUrl('/works', [
+        `filter=ids.openalex:${idsFilter}`,
+        `per_page=${batchSize}`,
+      ]);
       const batchResponse = await rateLimiter.makeRequest(batchUrl);
       
       if (batchResponse.ok) {
@@ -451,8 +313,12 @@ export async function getReferences(openAlexId: string): Promise<Paper[]> {
 // 論文の被引用リスト（この論文を引用している論文）を取得
 export async function getCitations(openAlexId: string, limit: number = 50): Promise<Paper[]> {
   try {
-    const cleanId = openAlexId.replace('https://openalex.org/', '');
-    const url = `${OPENALEX_BASE_URL}/works?filter=cites:${cleanId}&per_page=${limit}&sort=cited_by_count:desc&${getMailtoParam()}`;
+    const cleanId = normalizeOpenAlexId(openAlexId);
+    const url = buildOpenAlexUrl('/works', [
+      `filter=cites:${cleanId}`,
+      `per_page=${limit}`,
+      'sort=cited_by_count:desc',
+    ]);
     const response = await rateLimiter.makeRequest(url);
     
     if (!response.ok) {

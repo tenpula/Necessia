@@ -25,13 +25,56 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import { useState, useEffect, useRef } from 'react';
 
 interface AuthButtonProps {
-  /** 残り利用回数（外部から渡す） */
   remainingUsage?: number;
-  /** 1日の最大利用回数 */
   usageLimit?: number;
+  variant?: 'default' | 'avatar';
 }
 
-export default function AuthButton({ remainingUsage, usageLimit = 3 }: AuthButtonProps) {
+interface AuthMenuContentProps {
+  remainingUsage?: number;
+  usageLimit: number;
+  variant: NonNullable<AuthButtonProps['variant']>;
+}
+
+interface AvatarButtonProps {
+  variant: NonNullable<AuthButtonProps['variant']>;
+  image?: string | null;
+  name?: string | null;
+}
+
+function getInitial(name?: string | null): string {
+  return name?.charAt(0)?.toUpperCase() || '?';
+}
+
+function AvatarButton({ variant, image, name }: AvatarButtonProps) {
+  const avatarClassName =
+    variant === 'avatar'
+      ? 'w-10 h-10 rounded-full border border-neutral-700 shadow-md shadow-black/50 object-cover bg-neutral-800'
+      : 'size-10 rounded-full ring-2 ring-neutral-600 group-hover:ring-neutral-500 transition-all object-cover';
+
+  if (image) {
+    return (
+      <>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={image} alt={name || 'User'} className={avatarClassName} />
+      </>
+    );
+  }
+
+  return (
+    <div
+      className={
+        variant === 'avatar'
+          ? 'w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 shadow-md shadow-black/50 flex items-center justify-center text-neutral-200 font-bold text-sm'
+          : 'size-10 rounded-full bg-neutral-700 flex items-center justify-center text-white font-bold text-sm ring-2 ring-neutral-600 group-hover:ring-neutral-500 transition-all'
+      }
+    >
+      {getInitial(name)}
+    </div>
+  );
+}
+
+function AuthMenuContent({ remainingUsage, usageLimit, variant }: AuthMenuContentProps) {
   const { data: session, status } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -47,18 +90,14 @@ export default function AuthButton({ remainingUsage, usageLimit = 3 }: AuthButto
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // ローディング中
   if (status === 'loading') {
-    return (
-      <div className="size-10 rounded-full bg-slate-700 animate-pulse" />
-    );
+    return <div className="size-10 rounded-full bg-slate-700 animate-pulse" />;
   }
 
-  // 未ログイン
   if (status === 'unauthenticated') {
     return (
       <button
-        onClick={() => signIn('google')}
+        onClick={() => signIn('google', { redirectTo: '/' })}
         className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 
                    text-slate-800 font-medium rounded-xl transition-all duration-200 
                    shadow-md hover:shadow-lg border border-slate-200
@@ -88,15 +127,17 @@ export default function AuthButton({ remainingUsage, usageLimit = 3 }: AuthButto
     );
   }
 
-  // ログイン中
   return (
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setMenuOpen(!menuOpen)}
-        className="flex items-center gap-3 group transition-all"
+        className={
+          variant === 'avatar'
+            ? 'flex items-center justify-center transition-transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-neutral-600 rounded-full'
+            : 'flex items-center gap-3 group transition-all'
+        }
       >
-        {/* 残り回数バッジ */}
-        {remainingUsage !== undefined && (
+        {variant === 'default' && remainingUsage !== undefined && (
           <div className={`text-xs font-bold px-2.5 py-1 rounded-full border transition-colors
             ${remainingUsage > 0
               ? 'bg-neutral-800 text-neutral-300 border-neutral-700'
@@ -107,46 +148,29 @@ export default function AuthButton({ remainingUsage, usageLimit = 3 }: AuthButto
           </div>
         )}
 
-        {/* アバター */}
-        <div className="relative">
-          {session?.user?.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={session.user.image}
-              alt={session.user.name || 'User'}
-              className="size-10 rounded-full ring-2 ring-neutral-600 group-hover:ring-neutral-500 transition-all"
-            />
-          ) : (
-            <div className="size-10 rounded-full bg-neutral-700 
-                            flex items-center justify-center text-white font-bold text-sm
-                            ring-2 ring-neutral-600 group-hover:ring-neutral-500 transition-all">
-              {session?.user?.name?.charAt(0)?.toUpperCase() || '?'}
-            </div>
-          )}
-        </div>
+        <AvatarButton variant={variant} image={session?.user?.image} name={session?.user?.name} />
       </button>
 
-      {/* ドロップダウンメニュー */}
       {menuOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-slate-900/95 backdrop-blur-xl 
-                        border border-slate-700/50 rounded-xl shadow-2xl shadow-black/50 
-                        overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* ユーザー情報 */}
-          <div className="px-4 py-3 border-b border-slate-700/50">
-            <p className="text-sm font-medium text-white truncate">
-              {session?.user?.name}
-            </p>
-            <p className="text-xs text-slate-400 truncate">
-              {session?.user?.email}
-            </p>
+        <div
+          className={`absolute mt-2 w-64 overflow-hidden border animate-in fade-in slide-in-from-top-2 duration-200 ${
+            variant === 'avatar'
+              ? 'left-0 rounded-3xl bg-neutral-900 border-neutral-700 shadow-xl shadow-black/50'
+              : 'right-0 rounded-xl bg-slate-900/95 backdrop-blur-xl border-slate-700/50 shadow-2xl shadow-black/50 z-50'
+          }`}
+        >
+          <div className={`border-b ${variant === 'avatar' ? 'px-5 py-4 border-neutral-800' : 'px-4 py-3 border-slate-700/50'}`}>
+            <p className="text-sm font-medium text-neutral-200 truncate">{session?.user?.name}</p>
+            <p className="text-xs text-neutral-500 truncate">{session?.user?.email}</p>
           </div>
 
-          {/* ログアウト */}
           <button
             onClick={() => signOut()}
-            className="w-full px-4 py-3 text-sm text-slate-300 hover:text-white 
-                       hover:bg-slate-800/50 transition-colors text-left
-                       flex items-center gap-2"
+            className={`w-full text-left flex items-center font-medium transition-colors ${
+              variant === 'avatar'
+                ? 'px-5 py-4 text-sm text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 gap-3'
+                : 'px-4 py-3 text-sm text-slate-300 hover:text-white hover:bg-slate-800/50 gap-2'
+            }`}
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -158,5 +182,19 @@ export default function AuthButton({ remainingUsage, usageLimit = 3 }: AuthButto
         </div>
       )}
     </div>
+  );
+}
+
+export default function AuthButton({
+  remainingUsage,
+  usageLimit = 3,
+  variant = 'default',
+}: AuthButtonProps) {
+  return (
+    <AuthMenuContent
+      remainingUsage={remainingUsage}
+      usageLimit={usageLimit}
+      variant={variant}
+    />
   );
 }

@@ -4,7 +4,9 @@
  * 論文のタイトル、著者、引用リストなどが「どんなデータであるべきか」の規約です。
  */
 
-// 論文データの型定義
+export type VenueType = 'journal' | 'conference' | 'preprint' | 'unknown';
+export type CitationContextType = 'methodology' | 'critique' | 'comparison' | 'background';
+export type AnalysisStatus = 'idle' | 'analyzing' | 'completed' | 'error';
 
 export interface Paper {
   id: string;
@@ -14,7 +16,7 @@ export interface Paper {
   publicationYear: number;
   publicationDate?: string;
   venue?: string;
-  venueType: 'journal' | 'conference' | 'preprint' | 'unknown';
+  venueType: VenueType;
   citationCount: number;
   arxivId?: string;
   doi?: string;
@@ -27,34 +29,70 @@ export interface Author {
   orcid?: string;
 }
 
-// 引用文脈の種類
-export type CitationContextType = 'methodology' | 'critique' | 'comparison' | 'background';
-
 export interface Citation {
   id: string;
-  sourceId: string; // 引用元論文
-  targetId: string; // 引用先論文
-  contextType?: CitationContextType; // Phase 2で使用
-  contextSnippet?: string; // Phase 2で使用
-  confidence?: number; // LLMの確信度 (0-1)
-  analyzedAt?: string; // 解析日時
+  sourceId: string;
+  targetId: string;
+  contextType?: CitationContextType;
+  contextSnippet?: string;
+  confidence?: number;
+  analyzedAt?: string;
 }
 
 export interface CitationNetwork {
   seedPaper: Paper;
   papers: Paper[];
   citations: Citation[];
-  analysisProgress?: AnalysisProgress; // Phase 2で使用
+  analysisProgress?: AnalysisProgress;
 }
 
-// 解析進捗状況
 export interface AnalysisProgress {
   total: number;
   analyzed: number;
-  status: 'idle' | 'analyzing' | 'completed' | 'error';
+  status: AnalysisStatus;
   currentPaper?: string;
   errorMessage?: string;
 }
+
+export interface CitationAnalysisResult {
+  sourceId: string;
+  targetId: string;
+  contextType: CitationContextType;
+  confidence: number;
+  cached: boolean;
+}
+
+export interface CitationAnalysisStats {
+  total: number;
+  analyzed: number;
+  cached: number;
+  llmModel: string | null;
+}
+
+export interface CitationAnalysisProgressEvent {
+  type: 'progress';
+  analyzed: number;
+  total: number;
+  currentPaper: string;
+  percentage: number;
+}
+
+export interface CitationAnalysisCompleteEvent {
+  type: 'complete';
+  results: CitationAnalysisResult[];
+  stats: CitationAnalysisStats;
+}
+
+export interface CitationAnalysisErrorEvent {
+  type: 'error';
+  error: string;
+  message: string;
+}
+
+export type CitationAnalysisStreamEvent =
+  | CitationAnalysisProgressEvent
+  | CitationAnalysisCompleteEvent
+  | CitationAnalysisErrorEvent;
 
 // OpenAlex APIレスポンスの型
 export interface OpenAlexWork {
@@ -113,26 +151,26 @@ export interface OpenAlexSearchResponse {
   results: OpenAlexWork[];
 }
 
-// Gap提案（Phase 3）
 export interface GapProposal {
   paperA: Paper;
   paperB: Paper;
-  similarityScore: number; // ベクトル類似度 (0-1)
-  coCitationCount: number; // 共通引用元の数
-  commonCitations: Paper[]; // 共通引用元の論文リスト
-  reasoning: string; // LLMが生成した説明文
-  confidence: number; // 提案の信頼度 (0-1)
+  similarityScore: number;
+  coCitationCount: number;
+  commonCitations: Paper[];
+  reasoning: string;
+  confidence: number;
 }
 
-// 引用文脈の表示用情報
-export const CONTEXT_TYPE_INFO: Record<CitationContextType, {
+export interface CitationContextInfo {
   label: string;
   color: string;
   bgColor: string;
   borderColor: string;
   emoji: string;
   description: string;
-}> = {
+}
+
+export const CONTEXT_TYPE_INFO: Record<CitationContextType, CitationContextInfo> = {
   methodology: {
     label: '手法',
     color: '#387d39',

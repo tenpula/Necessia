@@ -9,16 +9,23 @@
 interface CloseButtonProps {
   onClick: () => void;
   className?: string;
+  title?: string;
 }
 
-export default function CloseButton({ onClick, className = '' }: CloseButtonProps) {
+export default function CloseButton({
+  onClick,
+  className = '',
+  title = '閉じる',
+}: CloseButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`p-1 hover:bg-slate-700 rounded-lg transition-colors ${className}`}
+      className={`p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-200 rounded-lg transition-colors ${className}`}
+      title={title}
+      aria-label={title}
     >
       <svg
-        className="w-5 h-5 text-slate-400"
+        className="w-5 h-5"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"

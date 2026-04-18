@@ -11,6 +11,7 @@
  * 論文間の意味的な類似度（Semantic Similarity）を計算します。
  */
 import { Paper } from '@/types/paper';
+import { getExponentialBackoffDelay, sleep } from '@/lib/async-utils';
 
 const GEMINI_EMBEDDING_MODEL = 'models/gemini-embedding-001';
 const MAX_RETRIES = 3;
@@ -66,14 +67,14 @@ export async function getEmbedding(text: string): Promise<number[]> {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        await response.json().catch(() => ({}));
         
         // 429 Rate Limited
         if (response.status === 429) {
           if (attempt < MAX_RETRIES) {
-            const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
+            const delay = getExponentialBackoffDelay(attempt, INITIAL_RETRY_DELAY);
             console.warn(`[Embeddings] Rate limited, retrying in ${delay}ms...`);
-            await new Promise((r) => setTimeout(r, delay));
+            await sleep(delay);
             continue;
           }
           throw new Error('Rate limited after max retries');
@@ -96,8 +97,8 @@ export async function getEmbedding(text: string): Promise<number[]> {
         throw error;
       }
       
-      const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
-      await new Promise((r) => setTimeout(r, delay));
+      const delay = getExponentialBackoffDelay(attempt, INITIAL_RETRY_DELAY);
+      await sleep(delay);
     }
   }
   
@@ -163,7 +164,7 @@ export async function getPaperEmbeddings(
 
     // バッチ間の待機（最後のバッチ以外）
     if (i + CONCURRENT_REQUESTS < papers.length) {
-      await new Promise((resolve) => setTimeout(resolve, delayBetweenBatches));
+      await sleep(delayBetweenBatches);
     }
   }
 

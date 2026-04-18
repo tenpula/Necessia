@@ -10,6 +10,9 @@ import { signIn, useSession } from 'next-auth/react';
 import { AnalysisProgress, CitationNetwork, GapProposal } from '@/types/paper';
 import { calculateContextStats } from '@/lib/graph-layout';
 
+const DEFAULT_USAGE_LIMIT = 3;
+const LOGIN_TRANSITION_DELAY_MS = 250;
+
 interface UseHomePageControllerResult {
   authStatus: 'loading' | 'authenticated' | 'unauthenticated';
   network: CitationNetwork | null;
@@ -49,12 +52,23 @@ export function useHomePageController(): UseHomePageControllerResult {
   const [cancelAnalysisFn, setCancelAnalysisFn] = useState<(() => void) | null>(null);
 
   const [remainingUsage, setRemainingUsage] = useState<number | undefined>(undefined);
-  const [usageLimit, setUsageLimit] = useState(3);
+  const [usageLimit, setUsageLimit] = useState(DEFAULT_USAGE_LIMIT);
   const [showUsageLimitBanner, setShowUsageLimitBanner] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  const resetAnalysisBindings = useCallback(() => {
+    setStartAnalysisFn(null);
+    setCancelAnalysisFn(null);
+    setSelectedGapProposal(null);
+    setAnalysisProgress(undefined);
+  }, []);
+
   const fetchUsage = useCallback(async () => {
-    if (status !== 'authenticated') return;
+    if (status !== 'authenticated') {
+      setRemainingUsage(undefined);
+      setUsageLimit(DEFAULT_USAGE_LIMIT);
+      return;
+    }
 
     try {
       const res = await fetch('/api/usage/check');
@@ -73,16 +87,10 @@ export function useHomePageController(): UseHomePageControllerResult {
   }, [fetchUsage]);
 
   const clearNetworkView = useCallback(() => {
-    if (cancelAnalysisFn) {
-      cancelAnalysisFn();
-    }
-
-    setStartAnalysisFn(null);
-    setCancelAnalysisFn(null);
-    setSelectedGapProposal(null);
-    setAnalysisProgress(undefined);
+    cancelAnalysisFn?.();
+    resetAnalysisBindings();
     setNetwork(null);
-  }, [cancelAnalysisFn]);
+  }, [cancelAnalysisFn, resetAnalysisBindings]);
 
   const handleSearch = useCallback(
     async (query: string) => {
@@ -161,10 +169,9 @@ export function useHomePageController(): UseHomePageControllerResult {
     setIsTransitioning(true);
 
     setTimeout(async () => {
-      // Auth.jsのsignInヘルパーを使うことで、必要な内部パラメータを正しく付与する。
-      await signIn('google', { callbackUrl: '/' });
+      await signIn('google', { redirectTo: '/' });
       setIsTransitioning(false);
-    }, 250);
+    }, LOGIN_TRANSITION_DELAY_MS);
   }, []);
 
   const closeUsageLimitBanner = useCallback(() => {
@@ -178,11 +185,8 @@ export function useHomePageController(): UseHomePageControllerResult {
       return;
     }
 
-    setStartAnalysisFn(null);
-    setCancelAnalysisFn(null);
-    setSelectedGapProposal(null);
-    setAnalysisProgress(undefined);
-  }, [network]);
+    resetAnalysisBindings();
+  }, [network, resetAnalysisBindings]);
 
   const contextStats = useMemo(() => {
     if (!network) return {};

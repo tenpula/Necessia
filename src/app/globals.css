@@ -1,16 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #000000;
-  --foreground: #f1f5f9;
+  --background: #e8ffe8;
+  --foreground: #0f172a;
 }
 
 * {
   box-sizing: border-box;
 }
 
-html, body, #__next {
+html,
+body,
+#__next {
   height: 100%;
   margin: 0;
   padding: 0;
@@ -24,19 +25,17 @@ body {
 }
 
 .averia-gruesa-libre-regular {
-  font-family: "Averia Gruesa Libre", system-ui;
+  font-family: 'Averia Gruesa Libre', system-ui;
   font-weight: 400;
   font-style: normal;
 }
 
-/* React Flow カスタムスタイル */
+/* React Flow */
 .react-flow__node {
   cursor: pointer;
-  /* 滑らかな加速度付きの動き（スナップ時にイージングが効く） */
   transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1.0) !important;
 }
 
-/* ドラッグ中はtransitionを無効化（直接追従させる） */
 .react-flow__node.dragging {
   transition: none !important;
 }
@@ -64,7 +63,7 @@ body {
   opacity: 0;
 }
 
-/* スクロールバーのカスタマイズ */
+/* Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -81,12 +80,13 @@ body {
 }
 
 .bg-glow {
-      animation: pulse-slow 8s infinite ease-in-out;
+  animation: pulse-slow 8s infinite ease-in-out;
 }
 
-/* アニメーション */
+/* Animations */
 @keyframes pulse-glow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
   }
   50% {
@@ -98,7 +98,7 @@ body {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
-/* line-clamp ユーティリティ */
+/* Line clamp utilities */
 .line-clamp-1 {
   display: -webkit-box;
   -webkit-line-clamp: 1;

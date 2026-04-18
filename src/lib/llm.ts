@@ -11,6 +11,7 @@
  * 単なる「引用」だけでなく、それが「手法の利用」なのか「批判」なのか「比較」なのかを識別します。
  */
 import { CitationContextType, Paper } from '@/types/paper';
+import { getExponentialBackoffDelay, sleep } from '@/lib/async-utils';
 
 /**
  * 分類結果の型定義
@@ -172,9 +173,9 @@ export async function classifyCitationContext(
 
           console.warn(`[LLM] Rate limited (429) for model ${GEMINI_MODEL_NAME}.`);
           if (attempt < MAX_RETRIES) {
-             const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
+             const delay = getExponentialBackoffDelay(attempt, INITIAL_RETRY_DELAY);
              console.log(`[LLM] Retrying in ${delay}ms...`);
-             await new Promise(r => setTimeout(r, delay));
+             await sleep(delay);
              continue;
           }
           throw new Error('Rate limited after max retries');
@@ -222,8 +223,8 @@ export async function classifyCitationContext(
       
       // ネットワークエラーなどはリトライ
       console.warn(`[LLM] Attempt ${attempt + 1} failed with error:`, error);
-      const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
-      await new Promise(r => setTimeout(r, delay));
+      const delay = getExponentialBackoffDelay(attempt, INITIAL_RETRY_DELAY);
+      await sleep(delay);
     }
   }
   
@@ -279,7 +280,7 @@ export async function classifyCitationContextsBatch(
     // レート制限のため待機
     if (i < pairs.length - 1) {
       console.log(`[LLM] Waiting ${delayBetweenRequests}ms before next request...`);
-      await new Promise((resolve) => setTimeout(resolve, delayBetweenRequests));
+      await sleep(delayBetweenRequests);
     }
   }
 

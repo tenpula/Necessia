@@ -1,10 +1,3 @@
-/*
- * 【ファイル概要】
- * 論文検索API
- * 入力されたキーワードで世界中の論文データベース（OpenAlex）を検索します。
- */
-
-// 論文検索 API Route
 import { NextRequest, NextResponse } from 'next/server';
 import {
   extractArxivId,
@@ -14,55 +7,46 @@ import {
   searchByTitle,
   getWorkById,
 } from '@/lib/openalex';
+import { requireTrimmedQuery, toPaperRouteErrorResponse } from '@/lib/paper-api';
+import { logRouteError } from '@/app/api/_shared/route-utils';
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const query = searchParams.get('q');
-
-  if (!query) {
-    return NextResponse.json(
-      { error: 'Query parameter "q" is required' },
-      { status: 400 }
-    );
+async function searchPapers(query: string) {
+  const arxivId = extractArxivId(query);
+  if (arxivId) {
+    const paper = await searchByArxivId(arxivId);
+    if (paper) {
+      return { papers: [paper], type: 'arxiv' as const };
+    }
   }
 
-  try {
-    // arXiv IDで検索
-    const arxivId = extractArxivId(query);
-    if (arxivId) {
-      const paper = await searchByArxivId(arxivId);
-      if (paper) {
-        return NextResponse.json({ papers: [paper], type: 'arxiv' });
-      }
+  const doi = extractDoi(query);
+  if (doi) {
+    const paper = await searchByDoi(doi);
+    if (paper) {
+      return { papers: [paper], type: 'doi' as const };
     }
-
-    // DOIで検索
-    const doi = extractDoi(query);
-    if (doi) {
-      const paper = await searchByDoi(doi);
-      if (paper) {
-        return NextResponse.json({ papers: [paper], type: 'doi' });
-      }
-    }
-
-    // OpenAlex IDで検索
-    if (query.includes('openalex.org')) {
-      const paper = await getWorkById(query);
-      if (paper) {
-        return NextResponse.json({ papers: [paper], type: 'openalex' });
-      }
-    }
-
-    // タイトルで検索
-    const papers = await searchByTitle(query);
-    return NextResponse.json({ papers, type: 'title' });
-
-  } catch (error) {
-    console.error('Search error:', error);
-    return NextResponse.json(
-      { error: 'Failed to search papers' },
-      { status: 500 }
-    );
   }
+
+  if (query.includes('openalex.org')) {
+    const paper = await getWorkById(query);
+    if (paper) {
+      return { papers: [paper], type: 'openalex' as const };
+    }
+  }
+
+  const papers = await searchByTitle(query);
+  return { papers, type: 'title' as const };
 }
 
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const query = requireTrimmedQuery(searchParams.get('q'));
+    const response = await searchPapers(query);
+    return NextResponse.json(response);
+  } catch (error) {
+    logRouteError('Search API', error);
+    const response = toPaperRouteErrorResponse(error, 'Failed to search papers');
+    return NextResponse.json({ error: response.message }, { status: response.status });
+  }
+}

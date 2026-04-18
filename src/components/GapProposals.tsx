@@ -6,9 +6,9 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { GapProposal, CitationNetwork } from '@/types/paper';
-import { LoadingSpinner } from './ui';
+import { CloseButton, LoadingSpinner } from './ui';
 import { formatPaperTitle } from '@/lib/format';
 
 interface GapProposalsProps {
@@ -21,20 +21,35 @@ export default function GapProposals({ network, onProposalClick, variant = 'floa
   const [proposals, setProposals] = useState<GapProposal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    // ネットワークが変更されたらリセット
+  const cancelPendingRequest = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+  }, []);
+
+  const resetPanelState = useCallback(() => {
+    cancelPendingRequest();
     setProposals([]);
     setError(null);
-    setIsExpanded(false);
+    setHasFetched(false);
     setIsCollapsed(true);
     setIsPanelOpen(false);
-  }, [network.seedPaper.id]);
+    setIsLoading(false);
+  }, [cancelPendingRequest]);
 
-  const findGaps = async () => {
+  useEffect(() => {
+    resetPanelState();
+  }, [network.seedPaper.id, resetPanelState]);
+
+  const findGaps = useCallback(async () => {
+    cancelPendingRequest();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsLoading(true);
     setError(null);
 
@@ -42,6 +57,7 @@ export default function GapProposals({ network, onProposalClick, variant = 'floa
       const response = await fetch('/api/papers/gap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           network,
           options: {
@@ -58,42 +74,59 @@ export default function GapProposals({ network, onProposalClick, variant = 'floa
       }
 
       const data = await response.json();
+      if (abortControllerRef.current !== controller) {
+        return;
+      }
+
       setProposals(data.proposals || []);
-      setIsExpanded(true);
+      setHasFetched(true);
       setIsCollapsed(false);
       setIsPanelOpen(true);
     } catch (err) {
+      if (controller.signal.aborted) {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleToggle = () => {
-    if (!isExpanded && proposals.length === 0 && !isLoading && !error) {
-      setIsPanelOpen(true);
-      findGaps();
-    } else {
-      const newPanelState = !isPanelOpen;
-      setIsPanelOpen(newPanelState);
-      if (newPanelState && proposals.length > 0) {
-        setIsCollapsed(false);
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+        setIsLoading(false);
+        setHasFetched(true);
       }
     }
-  };
+  }, [cancelPendingRequest, network]);
+
+  const handleToggle = useCallback(() => {
+    if (!hasFetched && proposals.length === 0 && !isLoading && !error) {
+      setIsPanelOpen(true);
+      void findGaps();
+      return;
+    }
+
+    setIsPanelOpen((prev) => {
+      const nextIsOpen = !prev;
+      if (nextIsOpen && proposals.length > 0) {
+        setIsCollapsed(false);
+      }
+      return nextIsOpen;
+    });
+  }, [error, findGaps, hasFetched, isLoading, proposals.length]);
 
   const handleClose = () => {
+    cancelPendingRequest();
     setIsPanelOpen(false);
-    setIsExpanded(false);
+    setIsLoading(false);
+    setHasFetched(false);
     setError(null);
   };
 
   const handleRetry = () => {
     setIsPanelOpen(true);
-    findGaps();
+    void findGaps();
   };
 
   const handleCancel = () => {
+    cancelPendingRequest();
     setIsLoading(false);
     setIsPanelOpen(false);
   };
@@ -101,6 +134,8 @@ export default function GapProposals({ network, onProposalClick, variant = 'floa
   const handleToggleCollapsed = useCallback(() => {
     setIsCollapsed((prev) => !prev);
   }, []);
+
+  useEffect(() => () => cancelPendingRequest(), [cancelPendingRequest]);
 
   if (variant === 'embedded') {
     return (
@@ -122,7 +157,7 @@ export default function GapProposals({ network, onProposalClick, variant = 'floa
         isPanelOpen={isPanelOpen}
         isLoading={isLoading}
         error={error}
-        isExpanded={isExpanded}
+        hasFetched={hasFetched}
         proposals={proposals}
         isCollapsed={isCollapsed}
         onToggleCollapsed={handleToggleCollapsed}
@@ -244,7 +279,7 @@ interface SlidePanelProps {
   isPanelOpen: boolean;
   isLoading: boolean;
   error: string | null;
-  isExpanded: boolean;
+  hasFetched: boolean;
   proposals: GapProposal[];
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
@@ -258,7 +293,7 @@ function SlidePanel({
   isPanelOpen,
   isLoading,
   error,
-  isExpanded,
+  hasFetched,
   proposals,
   isCollapsed,
   onToggleCollapsed,
@@ -267,7 +302,7 @@ function SlidePanel({
   onCancel,
   onProposalClick,
 }: SlidePanelProps) {
-  const shouldRender = isPanelOpen || isLoading || error || isExpanded;
+  const shouldRender = isPanelOpen || isLoading || error || hasFetched;
 
   if (!shouldRender) {
     return null;
@@ -293,7 +328,7 @@ function SlidePanel({
           <LoadingState onCancel={onCancel} />
         ) : error ? (
           <ErrorState error={error} onRetry={onRetry} onClose={onClose} />
-        ) : proposals.length === 0 && isExpanded ? (
+        ) : proposals.length === 0 && hasFetched ? (
           <EmptyState onClose={onClose} />
         ) : (
           <ProposalsList
@@ -321,7 +356,7 @@ function LoadingState({ onCancel }: LoadingStateProps) {
           <LoadingSpinner size="md" className="text-purple-500" />
           <span className="text-slate-300">研究ギャップを分析中...</span>
         </div>
-        <CloseIcon onClick={onCancel} />
+        <CloseButton onClick={onCancel} className="text-slate-400 hover:text-slate-300" />
       </div>
     </div>
   );
@@ -352,7 +387,7 @@ function ErrorState({ error, onRetry, onClose }: ErrorStateProps) {
             再試行
           </button>
         </div>
-        <CloseIcon onClick={onClose} className="text-red-400 hover:text-red-300" />
+        <CloseButton onClick={onClose} className="text-red-400 hover:text-red-300" />
       </div>
     </div>
   );
@@ -368,7 +403,7 @@ function EmptyState({ onClose }: EmptyStateProps) {
     <div className="p-4">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-purple-400 font-semibold">研究ギャップの提案</h3>
-        <CloseIcon onClick={onClose} />
+        <CloseButton onClick={onClose} className="text-slate-400 hover:text-slate-300" />
       </div>
       <p className="text-slate-400 text-sm">
         重要なギャップは見つかりませんでした。ネットワーク内の論文は十分に接続されているようです。
@@ -476,25 +511,5 @@ function ProposalItem({ proposal, onProposalClick }: ProposalItemProps) {
         </div>
       )}
     </div>
-  );
-}
-
-// 閉じるアイコン
-interface CloseIconProps {
-  onClick: () => void;
-  className?: string;
-}
-
-function CloseIcon({ onClick, className = 'text-slate-400 hover:text-slate-300' }: CloseIconProps) {
-  return (
-    <button onClick={onClick} className={className} title="閉じる">
-      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-        <path
-          fillRule="evenodd"
-          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-          clipRule="evenodd"
-        />
-      </svg>
-    </button>
   );
 }
